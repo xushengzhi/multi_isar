@@ -18,7 +18,10 @@ CLEAN.py Algorithm
 '''
 
 class CLEAN(object):
-    
+
+    '''
+    erot set threshold: dB
+    '''
     def __init__(self,
                  data,
                  erot=5,

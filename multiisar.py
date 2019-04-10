@@ -84,15 +84,16 @@ save_fig = False
 
 # %% setting basic parameters
 n = 128  # slow time
-m = 256  # fast time
-SNR = -5
+m = 128  # fast time
+SNR = 0
 [X, Y] = np.meshgrid(np.arange(n), np.arange(m))  # fast time, slow time
+model_zoom = 1
 
-fight = loadmat('/Users/shengzhixu/Documents/Python/multi_isar/Fighter.mat')
+fight = loadmat('/Users/shengzhixu/Documents/Python/multi_isar/Fighter2.mat')
 Xc = fight['Xc'].flatten()
 Yc = fight['Yc'].flatten()
-Xc = Xc / np.max(Xc) * 1.5
-Yc = Yc / np.max(Yc) * 1.5
+Xc = Xc / np.max(Xc) * 1.5 /model_zoom
+Yc = Yc / np.max(Yc) * 1.5 /model_zoom
 
 plt.figure()
 plt.scatter(Xc, Yc)
@@ -102,12 +103,12 @@ if save_fig:
     plt.savefig("Target.png", dpi=300)
 
 number_scatters = Xc.size
-
+number_target = 3
 # c = - \mu * 2 * v * T / c / fs
 # %%
-B = 4e9
+B = 4e9     # bandwidth
 resolution = c/2/B
-fc = 78e9
+fc = 78e9   # carrier frequency
 T = 1e-3
 Td = 0.8e-3
 
@@ -119,9 +120,9 @@ vm = c/4/T/fc
 
 
 # %% Targets parameters
-R = [11.678, 12.345, 13.123]        # inital range
-v = np.array([5, 10, 13]) * 1        # velocity ()
-a = np.array([20, 30, -20]) * 0          # acceleration
+R = [10.678, 10.677, 12.823]        # inital range
+v = np.array([-9, 10, 11]) * 1        # velocity ()
+a = np.array([20, 15, 25]) * 0.3         # acceleration
 
 theta = [30, 31, 32]    # angle
 w = [0, 0, 0]           # rotational velocity
@@ -142,7 +143,7 @@ fr = mu*2/c/fs              # k    * y
 fd = fc*T*2/c               # m    * x
 frs = fc/c*T**2             # m^2  * a
 fdr = mu*2*T/c/fs           # mk   * v
-fa = mu/c*T**2/fs * 1      # km^2 * a
+fa = mu/c*T**2/fs * 1       # km^2 * a
 
 c1, c2, c3 = fdr * vr
 
@@ -157,7 +158,7 @@ round_velocity2 = fold((vr[1] + w[1]*Xc)*fd)
 round_velocity3 = fold((vr[2] + w[2]*Xc)*fd)
 
 
-low_alpha = 0.8        # variation of the amplitude (real)     # X:fast time
+low_alpha = 0.5        # variation of the amplitude (real)     # X:fast time
 for i in range(number_scatters):
     data1 = data1 + (low_alpha + (1-low_alpha) * np.random.rand()) * \
                     exp(-2j*pi*( fr*(R[0]+Yc[i]) * X +
@@ -181,7 +182,7 @@ for i in range(number_scatters):
                                  ar[2] * fa * X * Y * Y +
                                  ar[2] * frs * Y * Y +
                                  c3 * X * Y))
-number_target = 3
+
 if number_target == 3:
     data = data1 + data2 + data3
 elif number_target==2:
@@ -190,7 +191,7 @@ else:
     data = data1
 
 data = awgn(data, SNR)
-dataf = fftshift(fft((data)* exp(-2j*pi*0.*X*Y), axis=-1, n=4*m), axes=-1)
+dataf = fftshift(fft((data)* exp(2j*pi*0*X*Y), axis=-1, n=1*m), axes=-1)
 plt.figure(figsize=[12, 8])
 plt.imshow(20*log10(abs(dataf)), aspect='auto', cmap='jet')
 plt.clim(vmin=22, vmax=62)
@@ -204,7 +205,7 @@ if save_fig:
 # plt.imshow(20*log10(abs(h + 1)), aspect='auto', cmap='gray')
 
 # %%
-dataf = fftshift(fft2((data)* exp(-2j*pi*0.*X*Y), [4*n, 4*m]))
+dataf = fftshift(fft2((data)* exp(2j*pi*c1*X*Y), [4*n, 4*m]))
 plt.figure(figsize=[12, 8])
 plt.imshow(20*log10(abs(dataf)), aspect='auto', cmap='jet')
 plt.clim(vmin=50, vmax=90)
@@ -214,8 +215,8 @@ if save_fig:
 
 
 # %% Using ME or VSVD to separate targets and estimate the couplings
-cle = 200                                   # number of the searching grids
-vspan = np.linspace(0, 15, cle)
+cle = 200                                   # number of the searching grids for velocity
+vspan = np.linspace(-15, 15, cle)
 cspan = vspan * fdr
 
 
@@ -260,6 +261,7 @@ def vareig(cspan, data, X, Y):
     tic = time.time()
     for i, com in (enumerate(cspan)):
         datac = data * exp(2j*pi*com*X*Y)
+        # es[i] = entropy((np.linalg.eigvalsh(datac.T.conj().dot(datac))))
         es[i] = entropy((np.linalg.eigvalsh(datac.T.conj().dot(datac))))
     print("Time for EIG: {:.3f} seconds".format(time.time()-tic))
 
@@ -268,45 +270,61 @@ def vareig(cspan, data, X, Y):
 
     return es, cvalue
 
-ele = 11
+ele = 61                 # number of the searching grids for acceleration
 ascan = np.linspace(-1.5*np.max(abs(a)), 1.5*np.max(abs(a)), ele)
 # fascan = ascan * fa
 
-def angle_acceleration_search(data, method, epsilon, cspan, X, Y):
+def angle_acceleration_search(data, method, ascan, cspan, X, Y):
     me = np.zeros((ele, cle))
-    for i, ep in tqdm(enumerate(epsilon)):
+    for i, ep in tqdm(enumerate(ascan)): # for acceleration
         if method.__name__ is 'vareig':
-            datac = data * exp(-2j*pi*(ep*fa*X*Y*Y))
+            datac = data * exp(-2j*pi*(ep*fa*X*Y*Y + ep*frs*Y*Y))
         elif method.__name__ is 'minimum_entropy':
             ep = ep
             datac = data * exp(-2j*pi*(ep*fa*X*Y*Y + ep*frs*Y*Y))
+        else:
+            print("Please Confirm your Method!")
+            raise ValueError
         me[i, :] = method(cspan, datac, X, Y)[0]
     return me
 
 
-# method = vareig
-# me1 = angle_acceleration_search(data, method, ascan, cspan, X, Y)
-# plt.figure(figsize=[12, 8])
-# plt.imshow((-normalize(me1)), aspect='auto', cmap='gray', extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
-# plt.contour(-np.flipud((normalize(me1))), aspect='auto', cmap='jet', extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
-# plt.xlabel("Velocity ($m/s$)")
-# plt.ylabel("Acceleration ($m/s^2$)")
-# plt.colorbar()
-# plt.scatter(vr, a, marker='x', s=60, label="Target1", c='r')
-# if save_fig:
-#     plt.savefig(method.__name__ + '{}.png'.format(SNR), dpi=300)
-#
-# method = minimum_entropy
-# me2 = angle_acceleration_search(data, method, ascan, cspan, X, Y)
-# plt.figure(figsize=[12, 8])
-# plt.imshow(-normalize(me2), aspect='auto', cmap='gray', extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
+method = vareig
+me1 = angle_acceleration_search(data, method, ascan, cspan, X, Y)
+plt.figure(figsize=[12, 8])
+plt.imshow((-normalize(me1)), aspect='auto', cmap='gray', extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
+plt.contour(-np.flipud((normalize(me1))), aspect='auto', cmap='jet', extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
+plt.xlabel("Velocity ($m/s$)")
+plt.ylabel("Acceleration ($m/s^2$)")
+plt.colorbar()
+plt.scatter(vr, a, marker='x', s=60, label="Target1", c='r')
+if save_fig:
+    plt.savefig(method.__name__ + '{}.png'.format(SNR), dpi=300)
+
+method = minimum_entropy
+me2 = angle_acceleration_search(data, method, ascan, cspan, X, Y)
+plt.figure(figsize=[12, 8])
+plt.imshow(-normalize(me2), aspect='auto', cmap='gray', extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
+plt.contour(-np.flipud(normalize(me2)), aspect='auto', cmap='jet', extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
+plt.xlabel("Velocity ($m/s$)")
+plt.ylabel("Acceleration ($m/s^2$)")
+plt.colorbar()
+plt.scatter(vr, a, marker='x', s=60, label="Target1", c='r')
+if save_fig:
+    plt.savefig(method.__name__ + '{}.png'.format(SNR), dpi=300)
+
+
+plt.figure(figsize=[12, 8])
+plt.imshow(-(normalize(me2))*(normalize(me1)), aspect='auto', cmap='gray', extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
 # plt.contour(-np.flipud(normalize(me2)), aspect='auto', cmap='jet', extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
-# plt.xlabel("Velocity ($m/s$)")
-# plt.ylabel("Acceleration ($m/s^2$)")
-# plt.colorbar()
-# plt.scatter(vr, a, marker='x', s=60, label="Target1", c='r')
-# if save_fig:
-#     plt.savefig(method.__name__ + '{}.png'.format(SNR), dpi=300)
+plt.xlabel("Velocity ($m/s$)")
+plt.ylabel("Acceleration ($m/s^2$)")
+plt.colorbar()
+plt.scatter(vr, a, marker='x', s=60, label="Target1", c='r')
+
+
+
+
 
 
 
@@ -328,42 +346,53 @@ if save_fig:
     plt.savefig("MEvsVSVD.png", dpi=300)
 
 
-# # %% CLEAN technique
-method = vareig  #
-erot = 3
-new_data = data.copy()
-_, new_com = method(cspan, data, X, Y)
+# %% CLEAN technique
 
-indx1, indy1, new_data = CLEAN(data = new_data * exp(2j*pi*new_com*X*Y), zoom=2, erot=erot).clean()
-new_data = new_data * exp(-2j*pi*new_com*X*Y)
+# method = vareig  #
+# erot = 2
+# new_data = data.copy()
+# _, new_com = method(cspan, data, X, Y)
+#
+# indx1, indy1, new_data = CLEAN(data = new_data * exp(2j*pi*new_com*X*Y), zoom=2, erot=2.5).clean()
+# new_data = new_data * exp(-2j*pi*new_com*X*Y)
+# plt.figure()
+# plt.imshow(20 * log10(abs(fft2(new_data * exp(2j * pi * new_com * X * Y)))), aspect='auto', cmap='jet')
+# plt.colorbar()
+#
+#
+# if number_target >=2:
+#     _, new_com = method(cspan, new_data, X, Y)
+#     indx2, indy2, new_data = CLEAN(data = new_data * exp(2j*pi*new_com*X*Y), zoom=2, erot=erot).clean()
+#     new_data = new_data * exp(-2j*pi*new_com*X*Y)
+#
+#     plt.figure()
+#     plt.imshow(20*log10(abs(fft2(new_data * exp(2j*pi*new_com*X*Y)))), aspect='auto', cmap='jet')
+#     plt.colorbar()
+#
+# if number_target >=3:
+#     _, new_com = method(cspan, new_data, X, Y)
+#     indx3, indy3, new_data = CLEAN(data = new_data * exp(2j*pi*new_com*X*Y), zoom=2, erot=erot).clean()
+#
+#     # compare SE
+# plt.figure(figsize=[12, 8])
+# plt.scatter(indx1, indy1, marker='o', s=60, label="Target1")
+#
+# if number_target >= 2:
+#     plt.scatter(indx2, indy2, marker='o', s=60, label="Target2")
+#
+# if number_target >= 3:
+#     plt.scatter(indx3, indy3, marker='o', s=60, label="Target3")
+#
+# plt.scatter(-round_range1, -round_velocity1, marker='x', c='k', label="True Pos")
+# plt.scatter(-round_range3, -round_velocity3, marker='x', c='k')
+# plt.scatter(-round_range2, -round_velocity2, marker='x', c='k')
+#
+# plt.legend(loc="upper center")
+# plt.xlabel("X")
+# plt.ylabel("Y")
+# if save_fig:
+#     plt.savefig("ME.png", dpi=300)
 
-if number_target >=2:
-    _, new_com = method(cspan, new_data, X, Y)
-    indx2, indy2, new_data = CLEAN(data = new_data * exp(2j*pi*new_com*X*Y), zoom=2, erot=erot).clean()
-    new_data = new_data * exp(-2j*pi*new_com*X*Y)
-
-    plt.figure()
-    plt.imshow(20*log10(abs(fft2(new_data * exp(2j*pi*new_com*X*Y)))), aspect='auto', cmap='jet')
-    plt.colorbar()
-
-if number_target >=3:
-    _, new_com = method(cspan, new_data, X, Y)
-    indx3, indy3, new_data = CLEAN(data = new_data * exp(2j*pi*new_com*X*Y), zoom=2, erot=erot).clean()
-
-    # compare SE
-    plt.figure(figsize=[12, 8])
-    plt.scatter(indx1, indy1, marker='o', s=60, label="Target1")
-    plt.scatter(indx2, indy2, marker='o', s=60, label="Target2")
-    plt.scatter(indx3, indy3, marker='o', s=60, label="Target3")
-    plt.scatter(-round_range1, -round_velocity1, marker='x', c='k', label="True Pos")
-    plt.scatter(-round_range2, -round_velocity2, marker='x', c='k')
-    plt.scatter(-round_range3, -round_velocity3, marker='x', c='k')
-    plt.legend(loc="upper center")
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    if save_fig:
-        plt.savefig("ME.png", dpi=300)
 
 
-
-
+plt.show()
