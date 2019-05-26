@@ -32,10 +32,10 @@ def simutaneous_iteration(A, Q=None, max_iter=1):
     '''
 
     if Q is None:
-        Q = np.eye(A.shape[0])
+        Q = np.eye(A.shape[0], dtype=complex)
     for i in range(max_iter):
         Z = A.dot(Q)
-        Q, R = qr(Z)	# reduce QR factorization of Z
+        Q, R = qr(Z)            # reduce QR factorization of Z
 
     return np.diag(R), Q
 
@@ -50,15 +50,15 @@ if __name__ == "__main__":
     H = A.dot(A.T.conj())
     u = np.sort(np.linalg.eigvalsh(H))[::-1]
 
-    Q = np.identity(128)
+    Q = np.identity(128, dtype=complex)
     error = []
-    for i in range(1000):
+    for i in range(3000):
         v, Q = simutaneous_iteration(H, Q, max_iter=1)
-        error.append(sum( (u - np.sort(v)[::-1])**2))
+        error.append(sum((u - np.sort(v)[::-1])**2))
 
-    plt.semilogy(error)
+    plt.semilogy(abs(np.asarray(error)))
 
-    print(np.allclose( Q.dot(np.diag(v)).dot(Q.T.conj()), H))
+    print(np.allclose(Q.dot(np.diag(v)).dot(Q.T.conj()), H))
     # len_size = 12
     # X, Y, Z = np.meshgrid(np.arange(len_size), np.arange(len_size), np.arange(len_size))
     # D = np.exp(2j*np.pi*(0.01*X*Y))
