@@ -47,32 +47,30 @@ def imgae_constrast(image):
 #############################################################################
 
 
-X, Y = np.meshgrid(np.arange(128), np.arange(128))
-Z = exp(2j*pi*( 0.1*X + 0.1*Y + 0.001*X*Y ))
+# To test the performance of ZZ^H and Z^HZ
+
+X, Y = np.meshgrid(np.arange(128), np.arange(32))
+Z = exp(2j*pi*(0.1*X + 0.1*Y + 0.001*X*Y)) + exp(2j*pi*(0.3*X - 0.1*Y - 0.002*X*Y))
 
 IC = []
 IE = []
+EE1 = []
+EE2 = []
 v_scan = np.linspace(-0.005, 0.005, 200)
 for k in tqdm(v_scan):
     C = exp(2j*pi*k*X*Y)
     Zcom = Z * C.conj()
-    Zfft = abs(fft2(Zcom))
-    IC.append(imgae_constrast(Zfft))
-    IE.append(renyi(Zfft, alpha=0.5))
+    EE1.append(renyi(np.linalg.eigvalsh(Zcom.dot(Zcom.T.conj()))))
+    EE2.append(renyi((np.linalg.eigvalsh(Zcom.T.conj().dot(Zcom)))))
+    # Zfft = abs(fft2(Zcom))
+    # IC.append(imgae_constrast(Zfft))
+    # IE.append(renyi(Zfft, alpha=0.5))
 
-plt.plot(v_scan, normalize(IC))
-plt.plot(v_scan, normalize(IE))
-
-
-
-
-
-
-
-
-
-
-
+# plt.plot(v_scan, normalize(IC))
+# plt.plot(v_scan, normalize(IE))
+plt.plot(v_scan, normalize(EE1), label='EE1')
+plt.plot(v_scan, normalize(EE2), label='EE2', ls=':')
+plt.legend()
 
 
 
