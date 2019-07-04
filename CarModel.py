@@ -13,32 +13,37 @@ import scipy as sp
 import matplotlib.pyplot as plt
 
 
+
 path = "multi_isar/"
 file = "car.jpg"
 img = plt.imread(file)
 img2 = np.sum(img[750::, ...], -1)
 binImg = img2 < 650
 
+plt.figure()
+plt.imshow(binImg, cmap='hot_r')
+
 dot = np.zeros_like(binImg)
-dot[::10, ::10] = 1
-binImg = dot * binImg
+dot[::12, ::12] = 1
+dotImg = dot * binImg
 
 plt.figure()
-plt.imshow(binImg)
+plt.imshow(dotImg)
 
 
 x, y = binImg.shape
 noise = np.random.rand(x*y).reshape(x, y) > 0
-dotImg = binImg & noise
+noiseImg = binImg & noise
 plt.figure()
 plt.imshow(binImg & noise, cmap='hot_r')
 
 
-np.sum(dotImg)
+np.sum(noiseImg)
 Yc, Xc = np.nonzero(dotImg)
 Xc.shape
 plt.figure()
-plt.scatter(Xc, Yc)
+plt.imshow(binImg, cmap='hot_r')
+plt.scatter(Xc, Yc, s=10, edgecolors='r')
 
 
 

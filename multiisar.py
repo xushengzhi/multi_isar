@@ -56,9 +56,9 @@ CMAP = plt.cm.jet
 # %% setting basic parameters
 n = 256  # slow time
 m = 256  # fast time
-SNR = 0
+SNR = 10
 [X, Y] = np.meshgrid(np.arange(n), np.arange(m))  # fast time, slow time
-model_zoom = 3.5
+# model_zoom = 3.5
 
 # %%
 # fight = loadmat('/Users/shengzhixu/Documents/Python/multi_isar/Fighter2.mat')
@@ -68,37 +68,56 @@ car = np.load('/Users/shengzhixu/Documents/Python/multi_isar/car.npz')
 Yc = car['arr_0']
 Xc = car['arr_1']
 Xc = (Xc - np.max(Xc)//2) / np.max(Xc) * 5
-Yc = (Yc - np.max(Yc)//2) / np.max(Yc) * 2
+Yc = (Yc - np.max(Yc)//2) / np.max(Yc) * 2.5
 plt.figure()
 plt.scatter(Xc, Yc)
+plt.xlabel("Xc")
+plt.ylabel("Yc")
+# Xc is the length ≈ 4.23meter (Xc.max()-Xc.min()), Yc is the width ≈ 2.10meter (Yc.max() - Yc.min())
+
 #%%
 
-def rotate_target(Xc, Yc, theta=0):
-    theta0 = deg2rad(theta)
+
+def rotate_target(Xc, Yc, rotation=0):
+    theta0 = deg2rad(rotation)
     rho, phi = cart2pol(Xc, Yc)
     Xnew, Ynew = pol2cart(rho, phi + theta0)
 
     return Xnew, Ynew
 
-Xc, Yc = rotate_target(Xc, Yc, 30)
+theta1 = 30
+Xcr, Ycr = rotate_target(Xc, Yc, theta1)
 
 plt.figure()
-plt.scatter(Xc, Yc)
+plt.scatter(Xcr, Ycr)
 plt.xlabel("X")
 plt.ylabel("Y")
 if save_fig:
     plt.savefig("Target.png", dpi=300)
 
-number_scatters = Xc.size
+number_scatters = Xcr.size
 
 # c = - \mu * 2 * v * T / c / fs
+
+# %% image the scene
+# Xt, Yt = rotate_target(Xc, Yc, theta1)
+# new_Xt = Xt + R[0]
+# Xtb, Ytb = rotate_target(new_Xt, Yt, -theta1)
+# plt.figure(figsize=[8, 8])
+# plt.scatter(Ytb, Xtb, s=2)
+# plt.xlim((-10, 10))
+# plt.ylim((0, 20))
+# plt.xlabel('Y')
+# plt.ylabel('X')
+
+
 
 # %% Radar parameters
 B = 4e9     # bandwidth
 resolution = c/2/B
 fc = 78e9   # carrier frequency
 T = 1e-4
-Td = 0.8e-3
+Td = 0.8*T
 
 max_unambiguous_velocity = c/4/T/fc
 
@@ -122,7 +141,7 @@ delta_velocity = ambiguity * max_unambiguous_velocity
 
 
 # number_target = 3
-R = np.array([10.000, 10 - 0.2*range_domain, 10 + 0.2*range_domain, 10 + 0.7*range_domain]) - 0.5        # inital range
+R = np.array([10.000, 10 - 0.15*range_domain, 10 + 0.2*range_domain, 10 + 0.7*range_domain]) - 0.5        # inital range
 # v = np.array([14, 14, 14, 14]) * 0.98 + np.array([0, 1.05*delta_velocity, 1.4*delta_velocity, 0])      # velocity ()
 # a = np.array([19, 19, -12, -12]) * 0.80         # acceleration
 
@@ -130,7 +149,7 @@ R = np.array([10.000, 10 - 0.2*range_domain, 10 + 0.2*range_domain, 10 + 0.7*ran
 ## same velocity
 number_target = 2
 v = np.array([14, 17, 14, 14]) * 3    # velocity ()
-a = np.array([10, 10, -12, -12]) * 0.80
+a = np.array([-5, 8, 10, 10]) * 0.80
 
 
 # ## same acceleration
@@ -148,14 +167,15 @@ a = np.array([10, 10, -12, -12]) * 0.80
 
 
 #%%
-ele = 41                 # number of the searching grids for acceleration
-cle = 41                                   # number of the searching grids for velocity
-vspan = np.linspace(30, 50, cle)
+ele = 41               # number of the searching grids for acceleration
+cle = 101                                   # number of the searching grids for velocity
+vspan = np.linspace(33, 50, cle)
 if number_target == 3:
     ascan = np.linspace(-1.5*np.max(abs(a))*1, 1.5*np.max(abs(a))*1, ele)
 else:
     ascan = np.linspace(-1.5 * np.max(abs(a)) * 0, 1.5 * np.max(abs(a)) * 1, ele)
-ascan = np.linspace(0, 15, ele)
+ascan = np.linspace(-8, 8, ele)
+
 
 theta = [30, 30, 30, 30]    # angle (should be similar)
 w = [0, 0, 0, 0]           # rotational velocity
@@ -163,7 +183,7 @@ vr = v*cos(deg2rad(theta))  # radial velocity
 ar = a*cos(deg2rad(theta))
 print(vr)
 vt = v*sin(deg2rad(theta))  # translational velocity
-
+# ascan = np.array([ar[0]-1, ar[0], ar[0]+1])
 
 w = w + vt/R            # rotational velocity + translational_velocity / range
 
@@ -179,7 +199,18 @@ frs = fc/c*T**2             # m^2  * a
 fdr = mu*2*T/c/fs           # mk   * v
 fa = mu/c*T**2/fs * 1       # km^2 * a
 
-c1, c2, c3, c4 = fdr * vr
+
+# Xij = 2*(R + Xcr)/c
+# Yij = 2*(vr + Ycr*w)/c
+# Zij = ar/c
+# fr = mu*2*Xij/fs              # k    * y
+# fd = fc*T*Yij/c               # m    * x
+# frs = fc*T**2*Zij             # m^2  * a
+# fdr = mu*2*T*Yij/fs           # mk   * v
+# fa = mu*Zij*T**2/fs      # km^2 * a
+
+Cr = fdr * vr
+
 
 def fold(value):
     return value - np.floor(value + 0.5)
@@ -188,47 +219,48 @@ def fold(value):
 low_alpha = 0.8      # variation of the amplitude (real)     # X:fast time
 for i in range(number_scatters):
     data1 = data1 + (low_alpha + (1-low_alpha) * np.random.rand()) * \
-                    exp(-2j*pi*( fr*(R[0]+Yc[i]) * X +     # range
-                                 fd*(vr[0]+w[0]*Xc[i]) * Y +    # Doppler
+                    exp(-2j*pi*( fr*(R[0]+Xcr[i]) * X +     # range
+                                 fd*(vr[0] + w[0]*Ycr[i]) * Y +    # Doppler
                                  ar[0] * fa * X * Y * Y +   #
                                  ar[0] * frs * Y * Y +
-                                 c1 * X * Y))
-round_range1 = fold((R[0] + Yc)*fr)
-round_velocity1 = fold((vr[0] + w[0]*Xc)*fd)
+                                 Cr[0] * X * Y))
+round_range1 = fold((R[0] + Ycr)*fr)
+round_velocity1 = fold((vr[0] + w[0]*Xcr)*fd)
 
 
-Xc, Yc = rotate_target(Xc, Yc, 0)
+Xcr, Ycr = rotate_target(Xcr, Ycr, -2)
 for i in range(number_scatters):
     data2 = data2 + (low_alpha + (1-low_alpha) * np.random.rand()) * \
-                    exp(-2j*pi*( fr*(R[1]+Yc[i]) * X +
-                                 fd*(vr[1]+w[1]*Xc[i]) * Y +
+                    exp(-2j*pi*( fr*(R[1]+Xcr[i]) * X +
+                                 fd*(vr[1] + w[1]*Ycr[i]) * Y +
                                  ar[1] * fa * X * Y * Y +
                                  ar[1] * frs * Y * Y +
-                                 c2 * X * Y))
-round_range2 = fold((R[1] + Yc)*fr)
-round_velocity2 = fold((vr[1] + w[1]*Xc)*fd)
+                                 Cr[1] * X * Y))
+round_range2 = fold((R[1] + Ycr)*fr)
+round_velocity2 = fold((vr[1] + w[1]*Xcr)*fd)
 
-Xc, Yc = rotate_target(Xc, Yc, 0)
+Xcr, Ycr = rotate_target(Xcr, Ycr, 0)
 for i in range(number_scatters):
     data3 = data3 + (low_alpha + (1-low_alpha) * np.random.rand()) * \
-                    exp(-2j*pi*( fr*(R[2]+Yc[i]) * X +
-                                 fd*(vr[2]+w[2]*Xc[i]) * Y +
+                    exp(-2j*pi*( fr*(R[2]+Xcr[i]) * X +
+                                 fd*(vr[2]+w[2]*Ycr[i]) * Y +
                                  ar[2] * fa * X * Y * Y +
                                  ar[2] * frs * Y * Y +
-                                 c3 * X * Y))
-round_range3 = fold((R[2] + Yc)*fr)
-round_velocity3 = fold((vr[2] + w[2]*Xc)*fd)
+                                 Cr[2] * X * Y))
+round_range3 = fold((R[2] + Ycr)*fr)
+round_velocity3 = fold((vr[2] + w[2]*Xcr)*fd)
 
-Xc, Yc = rotate_target(Xc, Yc, 0)
+
+Xcr, Ycr = rotate_target(Xcr, Ycr, )
 for i in range(number_scatters):
     data4 = data4 + (low_alpha + (1-low_alpha) * np.random.rand()) * \
-                    exp(-2j*pi*( fr*(R[3]+Yc[i]) * X +
-                                 fd*(vr[3]+w[3]*Xc[i]) * Y +
+                    exp(-2j*pi*( fr*(R[3]+Xcr[i]) * X +
+                                 fd*(vr[3]+w[3]*Ycr[i]) * Y +
                                  ar[3] * fa * X * Y * Y +
                                  ar[3] * frs * Y * Y +
-                                 c4 * X * Y))
-round_range4 = fold((R[3] + Yc)*fr)
-round_velocity4 = fold((vr[3] + w[3]*Xc)*fd)
+                                 Cr[3] * X * Y))
+round_range4 = fold((R[3] + Ycr)*fr)
+round_velocity4 = fold((vr[3] + w[3]*Xcr)*fd)
 
 
 if number_target == 4:
@@ -241,7 +273,7 @@ else:
     data = data1
 
 data = awgn(data, SNR)
-data1f = fftshift(fft((data)* exp(2j*pi*c1*X*Y), axis=-1, n=1*m), axes=-1)
+data1f = fftshift(fft((data)* exp(2j*pi*Cr[0]*X*Y), axis=-1, n=1*m), axes=-1)
 #%%
 plt.figure(figsize=[8, 5])
 plt.imshow(20*log10(abs(data1f)), aspect='auto', cmap='jet', extent=[-0.5, 0.5, 0, m])
@@ -261,7 +293,7 @@ if save_fig:
 # plt.colorbar()
 
 # %%
-dataf = fftshift(fft2((data)* exp(1 *2j*pi* ( c1*X*Y + ar[0]*fa*X*Y*Y + ar[0]*frs*Y*Y)), [1*n, 1*m]))
+dataf = fftshift(fft2((data)* exp(1 *2j*pi* ( Cr[0]*X*Y + ar[0]*fa*X*Y*Y + ar[0]*frs*Y*Y)), [1*n, 1*m]))
 plt.figure(figsize=[8, 5])
 data_fft2_db = 20*log10(abs(dataf))
 plt.imshow(np.flipud(data_fft2_db), aspect='auto', cmap='jet', extent=[-0.5, 0.5, -0.5, 0.5])
@@ -346,7 +378,7 @@ def angle_acceleration_search(data, method, ascan, cspan, X, Y, algorithm, alpha
     for i, ep in tqdm(enumerate(ascan)): # for acceleration
         if method.__name__ is 'eigen':
             # ep = 0
-            datac = data * exp(2j*pi*(ep*fa*X*Y*Y + ep*frs*Y*Y))
+            datac = data * exp(2j*pi*(ep*fa*X*Y*Y + 0*frs*Y*Y))
         elif method.__name__ is 'Fourier':
             ep = ep
             datac = data * exp(2j*pi*(ep*fa*X*Y*Y + ep*frs*Y*Y))
@@ -647,7 +679,7 @@ if number_target == 3:
     plt.scatter(-round_range2, -round_velocity2, marker='x', c='g',  label="True Pos2")
     plt.scatter(-round_range3, -round_velocity3, marker='x', c='b',  label="True Pos3")
 plt.xlim((-0.5, 0.5))
-plt.ylim(((-0.5, 0.5)))
+plt.ylim((-0.5, 0.5))
 plt.legend(loc="upper left")
 plt.xlabel("X")
 plt.ylabel("Y")
