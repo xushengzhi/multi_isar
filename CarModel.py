@@ -24,7 +24,7 @@ plt.figure()
 plt.imshow(binImg, cmap='hot_r')
 
 dot = np.zeros_like(binImg)
-dot[::12, ::12] = 1
+dot[::12, ::30] = 1
 dotImg = dot * binImg
 
 plt.figure()
@@ -41,9 +41,19 @@ plt.imshow(binImg & noise, cmap='hot_r')
 np.sum(noiseImg)
 Yc, Xc = np.nonzero(dotImg)
 Xc.shape
-plt.figure()
+
+save_fig = False
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
 plt.imshow(binImg, cmap='hot_r')
-plt.scatter(Xc, Yc, s=10, edgecolors='r')
+plt.scatter(Xc, Yc, s=18, edgecolors='r')
+ax.patch.set_visible(False)            # remove the frame
+for spi in plt.gca().spines.values():  # remove the frame
+    spi.set_visible(False)
+plt.tight_layout()
+plt.axis('off')
+if save_fig:
+    plt.savefig('car_model.png', dpi=300)
 
 
 

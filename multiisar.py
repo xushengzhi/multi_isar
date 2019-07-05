@@ -6,6 +6,7 @@ Created on Thu Feb 21 10:58:07 2019
 @author: shengzhixu
 """
 import time
+import sys
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -46,7 +47,7 @@ Conclusions:
 
 #os.chdir('~/Documents/Python')
 plt.close('all')
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 
 # %% settings of simulation
 save_fig = False
@@ -56,7 +57,7 @@ CMAP = plt.cm.jet
 # %% setting basic parameters
 n = 256  # slow time
 m = 256  # fast time
-SNR = 10
+SNR = 0
 [X, Y] = np.meshgrid(np.arange(n), np.arange(m))  # fast time, slow time
 # model_zoom = 3.5
 
@@ -65,10 +66,11 @@ SNR = 10
 # Xc = fight['Xc'].flatten()
 # Yc = fight['Yc'].flatten()
 car = np.load('/Users/shengzhixu/Documents/Python/multi_isar/car.npz')
-Yc = car['arr_0']
-Xc = car['arr_1']
+Xc = car['arr_0']
+Yc = car['arr_1']
 Xc = (Xc - np.max(Xc)//2) / np.max(Xc) * 5
 Yc = (Yc - np.max(Yc)//2) / np.max(Yc) * 2.5
+
 plt.figure()
 plt.scatter(Xc, Yc)
 plt.xlabel("Xc")
@@ -135,8 +137,8 @@ R = [14.619, 14.19, 10, 10]
 
 # ## same velocity
 number_target = 2
-v = np.array([17, 15, 14, 14]) * 3    # velocity ()
-a = np.array([8, 8, 10, 10]) * 0.80
+v = (np.array([80, 70, 14, 14]) + 70) / 3.6  # velocity ()
+a = np.array([8, 8, 10, 10]) * 0.0
 
 
 # ## same acceleration
@@ -153,13 +155,13 @@ a = np.array([8, 8, 10, 10]) * 0.80
 
 # %%
 ele = 11                                    # number of the searching grids for acceleration
-cle = 101                                   # number of the searching grids for velocity
-vspan = np.linspace(35, 50, cle)
+cle = 141                                   # number of the searching grids for velocity
+vspan = np.linspace(20, 60, cle)
 if number_target == 3:
     ascan = np.linspace(-1.5*np.max(abs(a))*1, 1.5*np.max(abs(a))*1, ele)
 else:
     ascan = np.linspace(-1.5 * np.max(abs(a)) * 0, 1.5 * np.max(abs(a)) * 1, ele)
-ascan = np.linspace(-8, 8, ele)
+ascan = np.linspace(-15, 15, ele)
 
 
 theta = [20, 35, 30, 30]    # angle (should be similar)
@@ -198,7 +200,9 @@ Cr = fdr * vr
 
 
 def fold(value):
-    return value - np.floor(value + 0.5)
+    reminder = value - np.floor(value + 0.5)
+    fold_num = np.floor(value)
+    return reminder, fold_num
 
 
 low_alpha = 0.8      # variation of the amplitude (real)     # X:fast time
@@ -209,8 +213,8 @@ for i in range(number_scatters):
                                  ar[0] * fa * X * Y * Y +   #
                                  ar[0] * frs * Y * Y +
                                  Cr[0] * X * Y))
-round_range1 = fold((R[0] + Ycr)*fr)
-round_velocity1 = fold((vr[0] + w[0]*Xcr)*fd)
+round_range1, _ = fold((R[0] + Ycr)*fr)
+round_velocity1, fold1 = fold((vr[0] + w[0]*Xcr)*fd)
 
 
 Xcr1, Ycr1 = rotate_target(Xc, Yc, theta[1])
@@ -221,8 +225,8 @@ for i in range(number_scatters):
                                  ar[1] * fa * X * Y * Y +
                                  ar[1] * frs * Y * Y +
                                  Cr[1] * X * Y))
-round_range2 = fold((R[1] + Ycr1)*fr)
-round_velocity2 = fold((vr[1] + w[1]*Xcr1)*fd)
+round_range2, _= fold((R[1] + Ycr1)*fr)
+round_velocity2, fold2 = fold((vr[1] + w[1]*Xcr1)*fd)
 
 Xcr, Ycr = rotate_target(Xcr, Ycr, 0)
 for i in range(number_scatters):
@@ -232,8 +236,8 @@ for i in range(number_scatters):
                                  ar[2] * fa * X * Y * Y +
                                  ar[2] * frs * Y * Y +
                                  Cr[2] * X * Y))
-round_range3 = fold((R[2] + Ycr)*fr)
-round_velocity3 = fold((vr[2] + w[2]*Xcr)*fd)
+round_range3, _ = fold((R[2] + Ycr)*fr)
+round_velocity3, fold3 = fold((vr[2] + w[2]*Xcr)*fd)
 
 
 Xcr, Ycr = rotate_target(Xcr, Ycr, )
@@ -244,8 +248,8 @@ for i in range(number_scatters):
                                  ar[3] * fa * X * Y * Y +
                                  ar[3] * frs * Y * Y +
                                  Cr[3] * X * Y))
-round_range4 = fold((R[3] + Ycr)*fr)
-round_velocity4 = fold((vr[3] + w[3]*Xcr)*fd)
+round_range4, _ = fold((R[3] + Ycr)*fr)
+round_velocity4, fold4 = fold((vr[3] + w[3]*Xcr)*fd)
 
 
 if number_target == 4:
@@ -393,7 +397,7 @@ def angle_acceleration_search(data, method, ascan, cspan, X, Y, algorithm, alpha
     for i, ep in tqdm(enumerate(ascan)): # for acceleration
         if method.__name__ is 'eigen':
             # ep = 0
-            datac = data * exp(2j*pi*(ep*fa*X*Y*Y + 0*frs*Y*Y))
+            datac = data * exp(2j*pi*(ep*fa*X*Y*Y + ep*frs*Y*Y))
         elif method.__name__ is 'Fourier':
             ep = ep
             datac = data * exp(2j*pi*(ep*fa*X*Y*Y + ep*frs*Y*Y))
@@ -466,7 +470,8 @@ if me1 is not None:
                 s=150,
                 facecolors='none',
                 label="Target1",
-                edgecolors='b')
+                edgecolors='w',
+                linewidths=3)
     if save_fig:
         plt.savefig(method1.__name__ + algorithm1.__name__ + '{}_{}.png'.format(SNR, number_target), dpi=300)
     plt.title('Eig with Entropy')
@@ -485,7 +490,8 @@ if me2 is not None:
                 s=150,
                 facecolors='none',
                 label="Target1",
-                edgecolors='b')
+                edgecolors='w',
+                linewidths=3)
     if save_fig:
         plt.savefig(method2.__name__ + algorithm2.__name__ + '{}_{}.png'.format(SNR, number_target), dpi=300)
     plt.title('Fourier with Entropy')
@@ -531,7 +537,8 @@ if (me3 is not None) and (me1 is not None):
                 s=150,
                 facecolors='none',
                 label="Target1",
-                edgecolors='b')
+                edgecolors='b',
+                linewidths=1)
     if save_fig:
         plt.savefig('EigEntropy_FourierIC_{}.png'.format(number_target), dpi=300)
     plt.title('EigEP + FourierIC')
@@ -690,9 +697,8 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 #
 plt.figure(figsize=[7, 5])
 plt.scatter(-round_range1, -round_velocity1, marker='x', c='k', label="True Pos1")
-if number_target == 3:
-    plt.scatter(-round_range2, -round_velocity2, marker='x', c='g',  label="True Pos2")
-    plt.scatter(-round_range3, -round_velocity3, marker='x', c='b',  label="True Pos3")
+plt.scatter(-round_range2, -round_velocity2, marker='x', c='g',  label="True Pos2")
+# plt.scatter(-round_range3, -round_velocity3, marker='x', c='b',  label="True Pos3")
 plt.xlim((-0.5, 0.5))
 plt.ylim((-0.5, 0.5))
 plt.legend(loc="upper left")
@@ -701,6 +707,25 @@ plt.ylabel("Y")
 if save_fig:
     plt.savefig("ME_{}.png".format(number_target), dpi=300)
 
+# %% unfold
+plt.figure(figsize=[7, 5])
+r0 = (R[0] + Ycr)*fr
+v0 = (vr[0] + w[0]*Xcr)*fd
+r1 = (R[1] + Ycr)*fr
+v1 = (vr[1] + w[1]*Xcr)*fd
+
+plt.scatter(v0, r0, marker='x', c='k', label="True Pos1")
+plt.scatter(v1, r1, marker='x', c='g',  label="True Pos2")
+# plt.scatter(-round_range3, -round_velocity3, marker='x', c='b',  label="True Pos3")
+# plt.xlim((-0.5, 0.5))
+# plt.ylim((-0.5, 0.5))
+plt.legend(loc="upper left")
+plt.xlabel("Doppler")
+plt.ylabel("Range")
+if save_fig:
+    plt.savefig("ME_{}.png".format(number_target), dpi=300)
 
 
+# sys.stdout.write('\a')
+# sys.stdout.flush()
 plt.show()
