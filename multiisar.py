@@ -99,24 +99,11 @@ number_scatters = Xcr.size
 
 # c = - \mu * 2 * v * T / c / fs
 
-# %% image the scene
-# Xt, Yt = rotate_target(Xc, Yc, theta1)
-# new_Xt = Xt + R[0]
-# Xtb, Ytb = rotate_target(new_Xt, Yt, -theta1)
-# plt.figure(figsize=[8, 8])
-# plt.scatter(Ytb, Xtb, s=2)
-# plt.xlim((-10, 10))
-# plt.ylim((0, 20))
-# plt.xlabel('Y')
-# plt.ylabel('X')
-
-
-
 # %% Radar parameters
 B = 4e9     # bandwidth
 resolution = c/2/B
 fc = 78e9   # carrier frequency
-T = 1e-4
+T = 2e-4
 Td = 0.8*T
 
 max_unambiguous_velocity = c/4/T/fc
@@ -144,12 +131,12 @@ delta_velocity = ambiguity * max_unambiguous_velocity
 R = np.array([10.000, 10 - 0.15*range_domain, 10 + 0.2*range_domain, 10 + 0.7*range_domain]) - 0.5        # inital range
 # v = np.array([14, 14, 14, 14]) * 0.98 + np.array([0, 1.05*delta_velocity, 1.4*delta_velocity, 0])      # velocity ()
 # a = np.array([19, 19, -12, -12]) * 0.80         # acceleration
+R = [14.619, 14.19, 10, 10]
 
-
-## same velocity
+# ## same velocity
 number_target = 2
-v = np.array([14, 17, 14, 14]) * 3    # velocity ()
-a = np.array([-5, 8, 10, 10]) * 0.80
+v = np.array([17, 15, 14, 14]) * 3    # velocity ()
+a = np.array([8, 8, 10, 10]) * 0.80
 
 
 # ## same acceleration
@@ -157,19 +144,17 @@ a = np.array([-5, 8, 10, 10]) * 0.80
 # v = np.array([14, 14, 14, 14]) * 0.98 + np.array([0 , 1.05*delta_velocity, 1.4*delta_velocity, 0])      # velocity ()
 # a = np.array([19, 19, 19, 19]) * 0.80         # acceleration
 
-
-## one target entropy spread map
+# one target entropy spread map
 # number_target = 1
 # R = [10.000, 10 - 0.2*range_domain, 10 + 0.2*range_domain, 10 + 0.7*range_domain]        # inital range
 # v = np.array([16, 14, 14, 14]) * 0.96 + np.array([0, 1.05*delta_velocity, 1.4*delta_velocity, 0])      # velocity ()
 # a = np.array([19, 19, -12, -12]) * 0.80         # acceleration
 
 
-
-#%%
-ele = 41               # number of the searching grids for acceleration
+# %%
+ele = 11                                    # number of the searching grids for acceleration
 cle = 101                                   # number of the searching grids for velocity
-vspan = np.linspace(33, 50, cle)
+vspan = np.linspace(35, 50, cle)
 if number_target == 3:
     ascan = np.linspace(-1.5*np.max(abs(a))*1, 1.5*np.max(abs(a))*1, ele)
 else:
@@ -177,7 +162,7 @@ else:
 ascan = np.linspace(-8, 8, ele)
 
 
-theta = [30, 30, 30, 30]    # angle (should be similar)
+theta = [20, 35, 30, 30]    # angle (should be similar)
 w = [0, 0, 0, 0]           # rotational velocity
 vr = v*cos(deg2rad(theta))  # radial velocity
 ar = a*cos(deg2rad(theta))
@@ -228,16 +213,16 @@ round_range1 = fold((R[0] + Ycr)*fr)
 round_velocity1 = fold((vr[0] + w[0]*Xcr)*fd)
 
 
-Xcr, Ycr = rotate_target(Xcr, Ycr, -2)
+Xcr1, Ycr1 = rotate_target(Xc, Yc, theta[1])
 for i in range(number_scatters):
     data2 = data2 + (low_alpha + (1-low_alpha) * np.random.rand()) * \
-                    exp(-2j*pi*( fr*(R[1]+Xcr[i]) * X +
-                                 fd*(vr[1] + w[1]*Ycr[i]) * Y +
+                    exp(-2j*pi*( fr*(R[1]+Xcr1[i]) * X +
+                                 fd*(vr[1] + w[1]*Ycr1[i]) * Y +
                                  ar[1] * fa * X * Y * Y +
                                  ar[1] * frs * Y * Y +
                                  Cr[1] * X * Y))
-round_range2 = fold((R[1] + Ycr)*fr)
-round_velocity2 = fold((vr[1] + w[1]*Xcr)*fd)
+round_range2 = fold((R[1] + Ycr1)*fr)
+round_velocity2 = fold((vr[1] + w[1]*Xcr1)*fd)
 
 Xcr, Ycr = rotate_target(Xcr, Ycr, 0)
 for i in range(number_scatters):
@@ -273,8 +258,9 @@ else:
     data = data1
 
 data = awgn(data, SNR)
-data1f = fftshift(fft((data)* exp(2j*pi*Cr[0]*X*Y), axis=-1, n=1*m), axes=-1)
+
 #%%
+data1f = fftshift(fft((data)* exp(2j*pi*Cr[1]*X*Y), axis=-1, n=1*m), axes=-1)
 plt.figure(figsize=[8, 5])
 plt.imshow(20*log10(abs(data1f)), aspect='auto', cmap='jet', extent=[-0.5, 0.5, 0, m])
 plt.clim(vmin=22, vmax=62)
@@ -285,6 +271,10 @@ plt.ylabel('Doppler bins')
 if save_fig:
     plt.savefig("1DFFT_{}.png".format(number_target), dpi=300)
 
+# Observed Scene
+
+
+
 # %%Hough Line Transform
 # h, theta, d = hough_line(abs(data1f))
 # plt.figure()
@@ -292,8 +282,33 @@ if save_fig:
 # plt.imshow(h, aspect='auto', cmap='gray')
 # plt.colorbar()
 
+# %% centroid Doppler compensation
+# com_v = -0.5*max_unambiguous_velocity
+# data = data * exp(2j * pi * com_v * fd * Y)
+
+# %% image the scene
+
+def scene(Xc, Yc, theta, R):
+    Xt, Yt = rotate_target(Xc, Yc, theta)
+    new_Xt = Xt + R
+    Xtb, Ytb = rotate_target(new_Xt, Yt, -theta)
+
+    return Xtb, Ytb
+
+
+plt.figure(figsize=[8, 8])
+x1, y1 = scene(Xc, Yc, theta[0], R[0])
+x2, y2 = scene(Xc, Yc, theta[1], R[1])
+plt.scatter(y1, x1, s=2)
+plt.scatter(y2, x2, s=2)
+plt.xlim((-10, 10))
+plt.ylim((0, 20))
+plt.xlabel('Y')
+plt.ylabel('X')
+
 # %%
-dataf = fftshift(fft2((data)* exp(1 *2j*pi* ( Cr[0]*X*Y + ar[0]*fa*X*Y*Y + ar[0]*frs*Y*Y)), [1*n, 1*m]))
+I = 1
+dataf = fftshift(fft2((data)* exp(1 *2j*pi* ( Cr[I]*X*Y + ar[I]*fa*X*Y*Y + ar[I]*frs*Y*Y)), [1*n, 1*m]), axes=0)
 plt.figure(figsize=[8, 5])
 data_fft2_db = 20*log10(abs(dataf))
 plt.imshow(np.flipud(data_fft2_db), aspect='auto', cmap='jet', extent=[-0.5, 0.5, -0.5, 0.5])
