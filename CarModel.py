@@ -24,7 +24,7 @@ plt.figure()
 plt.imshow(binImg, cmap='hot_r')
 
 dot = np.zeros_like(binImg)
-dot[::12, ::30] = 1
+dot[::12, ::20] = 1
 dotImg = dot * binImg
 
 plt.figure()
@@ -40,7 +40,7 @@ plt.imshow(binImg & noise, cmap='hot_r')
 
 np.sum(noiseImg)
 Yc, Xc = np.nonzero(dotImg)
-Xc.shape
+# Xc.shape
 
 save_fig = False
 fig = plt.figure()

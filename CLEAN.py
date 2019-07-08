@@ -38,12 +38,16 @@ class CLEAN(object):
         yvector = np.linspace(-0.5, 0.5, N*2**self.zoom, endpoint=False)
         max_ori = np.max(abs(fftshift(fft2(self.data, [M*2**self.zoom, N*2**self.zoom]))))
         threshold = max_ori / 10**(0.1*self.erot)
+        print('max spectrum: ', max_ori)
+        print('threshold: ', threshold)
+
         Indx = []
         Indy = []
         tic = time.time()
         # print("CLEAN Algorithm started...")
         while 1:
-            spectrum = (fftshift(fft2(data, [M*2**self.zoom, N*2**self.zoom])))
+            # print('Cleaning....')
+            spectrum = ((fft2(data, [M*2**self.zoom, N*2**self.zoom])))
             max_spectrum = np.max(abs(spectrum))
             # print(max_spectrum)
             if max_spectrum < threshold:
