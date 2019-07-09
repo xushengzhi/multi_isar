@@ -51,7 +51,7 @@ plt.close('all')
 
 # %% settings of simulation
 save_fig = False
-CMAP = plt.cm.jet
+# CMAP = plt.cm.jet
 
 
 # %% setting basic parameters
@@ -71,10 +71,12 @@ Yc = car['arr_1']
 Xc = (Xc - np.max(Xc)//2) / np.max(Xc) * 5
 Yc = (Yc - np.max(Yc)//2) / np.max(Yc) * 2.5
 
-# plt.figure()
-# plt.scatter(Xc, Yc)
-# plt.xlabel("Xc")
-# plt.ylabel("Yc")
+Xc = Xc[::2]
+Yc = Yc[::2]
+plt.figure()
+plt.scatter(Xc, Yc)
+plt.xlabel("Xc")
+plt.ylabel("Yc")
 # Xc is the length ≈ 4.23meter (Xc.max()-Xc.min()), Yc is the width ≈ 2.10meter (Yc.max() - Yc.min())
 
 #%%
@@ -87,17 +89,17 @@ def rotate_target(Xc, Yc, rotation=0):
 
     return Xnew, Ynew
 
-theta1 = 30
-Xcr, Ycr = rotate_target(Xc, Yc, theta1)
+# theta1 = 30
 
-plt.figure()
-plt.scatter(Xcr, Ycr)
-plt.xlabel("X")
-plt.ylabel("Y")
-if save_fig:
-    plt.savefig("Target.png", dpi=300)
+#
+# plt.figure()
+# plt.scatter(Xcr, Ycr)
+# plt.xlabel("X")
+# plt.ylabel("Y")
+# if save_fig:
+#     plt.savefig("Target.png", dpi=300)
 
-number_scatters = Xcr.size
+number_scatters = Xc.size
 
 # c = - \mu * 2 * v * T / c / fs
 
@@ -137,8 +139,12 @@ R = [14.619, 14.19, 10, 10]
 
 # ## same velocity
 number_target = 2
-v = (np.array([70, 80, 14, 14]) + 70) / 3.6  # velocity ()
-a = np.array([8, 8, 10, 10]) * 0.0
+random = np.random.randn(4)
+v = (np.array([70, 80, 14, 14]) + 70) / 3.6 + random * 2 # velocity ()
+a = np.array([0, 0, 10, 10]) + np.random.rand(4) * 10
+
+# v = np.array([43.22463802, 43.45906502, 22.6877857 , 23.84281342])
+# a = np.array([-3.95944986,  4.40142665, 10.00087471, 10.02906805])
 
 
 # ## same acceleration
@@ -154,15 +160,23 @@ a = np.array([8, 8, 10, 10]) * 0.0
 
 
 # %%
-ele = 21                                    # number of the searching grids for acceleration
+ele = 81                                    # number of the searching grids for acceleration
 cle = 201                                   # number of the searching grids for velocity
-vspan = np.linspace(30, 40, cle)
+vspan = np.linspace(32, 39, cle)
 if number_target == 3:
     ascan = np.linspace(-1.5*np.max(abs(a))*1, 1.5*np.max(abs(a))*1, ele)
 else:
     ascan = np.linspace(-1.5 * np.max(abs(a)) * 0, 1.5 * np.max(abs(a)) * 1, ele)
-ascan = np.linspace(-7, 7, ele)
+ascan = np.linspace(-10, 10, ele)
 
+
+number_target = 2
+random = np.random.randn(4)
+v = (np.array([72, 80, 14, 14]) + 70) / 3.6 + random * 0 # velocity ()
+a = np.array([0, 0, 10, 10]) + np.random.rand(4) * 2
+
+# v = np.array([42.17461925, 40.6512066 , 20.23453959, 22.938097  ])
+# a = np.array([ 0.97821432,  0.11965543, 10.73977276, 11.562339  ])
 
 theta = [20, 35, 30, 30]    # angle (should be similar)
 w = [0, 0, 0, 0]           # rotational velocity
@@ -207,8 +221,8 @@ def fold(value):
 def varing_amplitude(low_alpha):
     real = low_alpha
 
-
-low_alpha = 1      # variation of the amplitude (real)     # X:fast time
+Xcr, Ycr = rotate_target(Xc, Yc, theta[0])
+low_alpha = 0.5      # variation of the amplitude (real)     # X:fast time
 for i in range(number_scatters):
     data1 = data1 + (low_alpha + (1-low_alpha) * np.random.rand()) * \
                     exp(-2j*pi*( fr*(R[0]+Xcr[i]) * X +     # range
@@ -267,7 +281,7 @@ else:
 data = awgn(data, SNR)   # X (range), Y (Doppler)
 
 #%%
-range
+
 data1f = fftshift(fft((data)* exp(2j*pi*Cr[1]*X*Y), axis=-1, n=4*m), axes=-1)
 plt.figure(figsize=[8, 5])
 plt.imshow(20*log10(abs(data1f)), aspect='auto', cmap='jet', extent=[0, range_domain, 0, m])
@@ -361,7 +375,7 @@ def Fourier(cspan, data, X, Y, algorithm, alpha=1):
         datac = data * exp(2j*pi*com*X*Y)
         isar = abs(fft2(datac, [1*n, 1*m]))
         ec[i] = algorithm(isar, alpha)
-    print("Time for ME: {:.3f} seconds".format(time.time()-tic))
+    print("Time for FFT: {:.3f} seconds".format(time.time()-tic))
 
     indc = np.argwhere(np.min(ec) == ec).flatten()[0]
     cvalue = cspan[indc]
@@ -426,18 +440,20 @@ def angle_acceleration_search(data, method, ascan, cspan, X, Y, algorithm, alpha
 # m3: FourierIC
 
 me0, me1, me2, me3 = None, None, None, None
+method1, method2, method3, method0 = None, None, None, None
+algorithm1, algorithm2, algorithm3, algorithm0 = None, None, None, None
 
-method0 = eigen
-algorithm0 = image_constrast
+# method0 = eigen
+# algorithm0 = image_constrast
 
 method1 = eigen
 algorithm1 = image_constrast
 
 method2 = Fourier
-algorithm2 = image_constrast
+algorithm2 = algorithm1
 
-method3 = Fourier
-algorithm3 = image_constrast
+# method3 = Fourier
+# algorithm3 = image_constrast
 alpha = 1
 
 
@@ -448,7 +464,11 @@ me2 = angle_acceleration_search(data, method2, ascan, cspan, X, Y, algorithm=alg
 # me3 = angle_acceleration_search(data, method3, ascan, cspan, X, Y, algorithm=algorithm3, alpha=alpha)
 
 # %% plt
-CMAP = 'jet'
+if algorithm1 == renyi:
+    CMAP = 'jet_r'
+else:
+    CMAP = 'jet'
+
 if me0 is not None:
     plt.figure(figsize=[8, 5])
     plt.imshow((1-normalize(me0)), aspect='auto', cmap=CMAP, extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
@@ -470,7 +490,7 @@ if me0 is not None:
 
 if me1 is not None:
     plt.figure(figsize=[8, 5])
-    plt.imshow(np.flipud(normalize(me1)), aspect='auto', cmap=CMAP,
+    plt.imshow(np.flipud(normalize(me1[:, :])), aspect='auto', cmap=CMAP,
                extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
     # plt.contour(-np.flipud((normalize(me1))), aspect='auto', cmap='jet',
     #             extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
@@ -560,8 +580,12 @@ if (me3 is not None) and (me1 is not None):
 
 
 if (me2 is not None) and (me1 is not None):
+    if algorithm2 == renyi:
+        me_com = -(1 - normalize(me2)) * (1 - normalize(me1))
+    else:
+        me_com = normalize(me1) * normalize(me2)
     plt.figure(figsize=[8, 5])
-    plt.imshow(np.flipud(-(1 - normalize(me2))*(1 - normalize(me1))),
+    plt.imshow(np.flipud(me_com),
                aspect='auto', cmap=CMAP, extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
     # plt.contour(-np.flipud(normalize(me2)), aspect='auto', cmap='jet',
     #               extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
@@ -683,26 +707,38 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 '''
 a more simple way to image two targets is using the thresholding
 '''
-plot_choise = 3
-
-if plot_choise==1:
-    indx_a, indx_v = max_pos(me1)
-    a_est = ascan[indx_a]
-    v_est = vspan[indx_v]
-    print("velocity: {}\nacceleration: {}".format(v_est, a_est))
-elif plot_choise == 2:
-    indx_a, indx_v = max_pos(me2)
-    a_est = ascan[indx_a]
-    v_est = vspan[indx_v]
-    print("velocity: {}\nacceleration: {}".format(v_est, a_est))
-elif plot_choise == 3:
-    me_com = -(1 - normalize(me2)) * (1 - normalize(me1))
-    indx_a, indx_v = max_pos(me_com)
-    a_est = ascan[indx_a]
-    v_est = vspan[indx_v]
-    print("velocity: {}\nacceleration: {}".format(v_est, a_est))
+if algorithm2 == renyi:
+    indx_a, indx_v = max_pos(-me1)
 else:
-    pass
+    indx_a, indx_v = max_pos(me1)
+a_est1 = ascan[indx_a]
+v_est1 = vspan[indx_v]
+print("velocity1: {}    acceleration1: {}".format(v_est1, a_est1))
+
+
+if algorithm2 == renyi:
+    indx_a, indx_v = max_pos(-me2)
+else:
+    indx_a, indx_v = max_pos(me2)
+a_est2 = ascan[indx_a]
+v_est2 = vspan[indx_v]
+print("velocity2: {}    acceleration2: {}".format(v_est2, a_est2))
+
+
+if algorithm2 == renyi:
+    me_com = -(1 - normalize(me2)) * (1 - normalize(me1))
+    indx_a, indx_v = max_pos(-me_com)
+else:
+    me_com = normalize(me1) * normalize(me2)
+    indx_a, indx_v = max_pos(me_com)
+
+a_est3 = ascan[indx_a]
+v_est3 = vspan[indx_v]
+print("velocity3: {:.4}    acceleration3: {:.4}".format(v_est3, a_est3))
+
+
+v_est = v_est3
+a_est = a_est3
 
 # %% Thresholding
 
