@@ -57,7 +57,7 @@ save_fig = False
 # %% setting basic parameters
 n = 256  # slow time
 m = 256  # fast time
-SNR = 0
+SNR = -5
 [X, Y] = np.meshgrid(np.arange(n), np.arange(m))  # fast time, slow time
 # model_zoom = 3.5
 
@@ -140,7 +140,7 @@ R = [14.619, 14.19, 10, 10]
 # ## same velocity
 number_target = 2
 random = np.random.randn(4)
-v = (np.array([70, 80, 14, 14]) + 70) / 3.6 + random * 2 # velocity ()
+v = (np.array([70, 80, 14, 14]) + 70) / 3.6 + random * 0.5 # velocity ()
 a = np.array([0, 0, 10, 10]) + np.random.rand(4) * 10
 
 # v = np.array([43.22463802, 43.45906502, 22.6877857 , 23.84281342])
@@ -160,19 +160,10 @@ a = np.array([0, 0, 10, 10]) + np.random.rand(4) * 10
 
 
 # %%
-ele = 81                                    # number of the searching grids for acceleration
-cle = 201                                   # number of the searching grids for velocity
-vspan = np.linspace(32, 39, cle)
-if number_target == 3:
-    ascan = np.linspace(-1.5*np.max(abs(a))*1, 1.5*np.max(abs(a))*1, ele)
-else:
-    ascan = np.linspace(-1.5 * np.max(abs(a)) * 0, 1.5 * np.max(abs(a)) * 1, ele)
-ascan = np.linspace(-10, 10, ele)
-
 
 number_target = 2
 random = np.random.randn(4)
-v = (np.array([72, 80, 14, 14]) + 70) / 3.6 + random * 0 # velocity ()
+v = (np.array([72, 80, 14, 14]) + 70) / 3.6 + random * 2 # velocity ()
 a = np.array([0, 0, 10, 10]) + np.random.rand(4) * 2
 
 # v = np.array([42.17461925, 40.6512066 , 20.23453959, 22.938097  ])
@@ -187,6 +178,12 @@ vt = v*sin(deg2rad(theta))  # translational velocity
 # ascan = np.array([ar[0]-1, ar[0], ar[0]+1])
 
 w = w + vt/R            # rotational velocity + translational_velocity / range
+
+
+ele = 81                                    # number of the searching grids for acceleration
+cle = 201                                   # number of the searching grids for velocity
+vspan = np.linspace(np.min(vr)-2, np.max(vr)+2, cle)
+ascan = np.linspace(-10, 10, ele)
 
 # %% Generating data
 data1 = np.zeros((m, n), dtype=complex)
@@ -705,7 +702,7 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 # %% CLEAN technique
 
 '''
-a more simple way to image two targets is using the thresholding
+a more simple way to image two targets is using the Thresholding
 '''
 if algorithm2 == renyi:
     indx_a, indx_v = max_pos(-me1)
