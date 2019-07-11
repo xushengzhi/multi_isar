@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 path = "multi_isar/"
 file = "car.jpg"
-img = plt.imread(path+file)
+img = plt.imread(file)
 img2 = np.sum(img[750::, ...], -1)
 binImg = img2 < 650
 
@@ -24,7 +24,7 @@ plt.figure()
 plt.imshow(binImg, cmap='hot_r')
 
 dot = np.zeros_like(binImg)
-dot[::12, ::15] = 1
+dot[::12, ::12] = 1
 dotImg = dot * binImg
 
 plt.figure()
@@ -46,7 +46,7 @@ save_fig = False
 fig = plt.figure()
 ax = fig.add_subplot(1, 1, 1)
 plt.imshow(binImg, cmap='hot_r')
-plt.scatter(Xc, Yc, s=18, edgecolors='r')
+plt.scatter(Xc[::2], Yc[::2], s=18, edgecolors='r')
 ax.patch.set_visible(False)            # remove the frame
 for spi in plt.gca().spines.values():  # remove the frame
     spi.set_visible(False)
