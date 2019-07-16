@@ -15,6 +15,8 @@ from pylab  import pi, log2, floor, ceil, zeros, exp, sinc, fft, fftshift, log10
 from scipy.constants import speed_of_light as c
 from scipy import interpolate
 
+from Keystone import sinc_interp
+
 # %% utils
 
 def mmplot(mat, clim=40):
@@ -74,7 +76,7 @@ K_L = int(2**(ceil(log2(L))+1))  # fast time DFT size for interpolation and shif
 K_M = int(2**(ceil(log2(M))+3))  # slow time DFT size
 
 Ntgt = 3
-v = np.array([-200, 0, 650]) # velocity in m/s towards the radar
+v = np.array([-200, -60, 650]) # velocity in m/s towards the radar
 
 init_range_bins = np.array([30, 60, 65])
 carrier_frequency = 10e9 # RF
@@ -156,14 +158,16 @@ plt.title('Unwrapped phase')
 # %% Keystone interpolation
 Y_Rd_key = np.zeros_like(Y_Rd, dtype=complex)
 for k in range(K_L):
-    y_temp = interp(Y_Rd[k, :], ms, ms * (carrier_frequency / (carrier_frequency + FL[k])))
+    y_temp = sinc_interp(Y_Rd[k, :],
+                         ms,
+                         ms * (carrier_frequency / (carrier_frequency + FL[k])))
     Y_Rd_key[k, :] = y_temp
 
-for mp in range(M):
-    for k in range(K_L):
-        mmp = ms[mp]
-        Y_Rd_key[k, mp] = Y_Rd_key[k, mp] * exp(2j * pi * amb_num[2] * mmp * (carrier_frequency / (carrier_frequency + FL[k])))
-        Y_Rd_key[k, mp] = Y_Rd_key[k, mp] * exp(-2j * pi * amb_num[2] * mmp * (FL[k] / carrier_frequency))
+# for mp in range(M):
+#     for k in range(K_L):
+#         mmp = ms[mp]
+#         Y_Rd_key[k, mp] = Y_Rd_key[k, mp] * exp(2j * pi * amb_num[2] * mmp * (carrier_frequency / (carrier_frequency + FL[k])))
+#         Y_Rd_key[k, mp] = Y_Rd_key[k, mp] * exp(-2j * pi * amb_num[2] * mmp * (FL[k] / carrier_frequency))
 
 y_temp_key = ifft(ifftshift( Y_Rd_key, axes=0), K_L, axis=0)
 y_rd_key = y_temp_key[0:L-1, :]

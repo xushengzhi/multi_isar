@@ -78,6 +78,19 @@ def tsallis(vector, q=3.5):
         info = vector / np.sum(vector)
         return 1/(q-1) - np.sum(info**q/(q-1))
 
+def mmplot(mat, clim=40):
+    '''
+    db plot
+    :param mat: input matrix
+    :param clim: axis clim
+    :return: None, plt object
+    '''
+    mat = 20 * log10(abs(mat))
+    mat = mat - np.max(mat)
+    plt.imshow(mat, cmap='jet', aspect='auto')
+    plt.clim([-clim, 0])
+    plt.colorbar()
+
 # image contrast method
 def spatial_mean(image, *args, **kwargs):
     energy = np.sum(abs(image))

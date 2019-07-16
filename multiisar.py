@@ -13,6 +13,7 @@ from pylab import pi, exp, fft, fft2, log10, fftshift, sin, cos, deg2rad
 from scipy.constants import speed_of_light as c
 from tqdm import tqdm
 
+from multi_isar.Keystone import Keystone
 from multi_isar.utils import cart2pol, pol2cart, awgn, normalize, entropy, renyi, tsallis, image_constrast
 
 
@@ -46,10 +47,11 @@ plt.close('all')
 save_fig = False
 
 
+
 # %% setting basic parameters
 k = 200  # fast time
 m = 156  # slow time
-SNR = -5
+SNR = 20
 [K, M] = np.meshgrid(np.arange(k), np.arange(m))  # slow time * fast time (X is fasttime, Y is slowtime)
 # 156*200     X(0->200), Y(0->156)
 
@@ -85,7 +87,7 @@ number_scatters = Xc.size
 B = 4e9     # bandwidth
 resolution = c/2/B
 fc = 78e9   # carrier frequency
-T = 3e-4
+T = 2.5e-4
 Td = 0.8*T
 
 max_unambiguous_velocity = c/4/T/fc
@@ -105,14 +107,14 @@ Acceleration rate can be ignored!!!!!!!!!
 
 # %% Targets parameters
 range_domain = resolution * k
-R = [14.619, 14.19, 10, 10]
+R = [21.619, 20.69, 10, 10]
 
 number_target = 2
 random = np.random.rand(4)  # add random velocity to the targets
-v = (np.array([72, 80, 14, 14]) + 70) / 3.6 + random * 0.1 # velocity ()
+v = (np.array([80, 75, 14, 14]) + 80) / 3.6 + random * 0.1 # velocity ()
 a = np.array([0, 0, 10, 10]) + np.random.rand(4) * 1
 
-theta = [20, 35, 30, 30]    # angle (should be similar)
+theta = [20, 30, 30, 30]    # angle (should be similar)
 w = [0, 0, 0, 0]           # rotational velocity
 vr = v*cos(deg2rad(theta))  # radial velocity
 ar = a*cos(deg2rad(theta))
@@ -120,10 +122,13 @@ print(vr)
 vt = v*sin(deg2rad(theta))  # translational velocity
 w = w + vt/R            # rotational velocity + translational_velocity / range
 
-ele = 81                                    # number of the searching grids for acceleration
-cle = 201                                   # number of the searching grids for velocity
+ele = 11                                    # number of the searching grids for acceleration
+cle = 61                           # number of the searching grids for velocity
+
 vspan = np.linspace(np.min(vr[0:2])-2, np.max(vr[0:2])+2, cle)
-ascan = np.linspace(-10, 10, ele)
+# vspan = np.arange(3, 9) * 2*max_unambiguous_velocity
+keystone_usd = False
+ascan = np.linspace(-5, 5, ele)
 
 # %% Generating data
 data1 = np.zeros((m, k), dtype=complex)
@@ -144,16 +149,17 @@ def fold(value):
     fold_num = np.floor(value)
     return reminder, fold_num
 
+with_spread = 1
 
 Xcr, Ycr = rotate_target(Xc, Yc, theta[0])
-low_alpha = 0.5      # variation of the amplitude (real)     # X:fast time
+low_alpha = 1      # variation of the amplitude (real)     # X:fast time
 for i in range(number_scatters):
     data1 = data1 + (low_alpha + (1-low_alpha) * np.random.rand()) * \
                     exp(-2j * pi * (fr * (R[0]+Xcr[i]) * K +  # range
                                     fd * (vr[0] + w[0]*Ycr[i]) * M +  # Doppler
                                     ar[0] * fa * K * M * M +  #
                                     ar[0] * frs * M * M +
-                                    Cr[0] * K * M))
+                                    (vr[0] + with_spread*w[0]*Ycr[i]) * fdr * K * M))
 round_range1, _ = fold((R[0] + Ycr)*fr)
 round_velocity1, fold1 = fold((vr[0] + w[0]*Xcr)*fd)
 
@@ -165,7 +171,7 @@ for i in range(number_scatters):
                                     fd * (vr[1] + w[1]*Ycr1[i]) * M +
                                     ar[1] * fa * K * M * M +
                                     ar[1] * frs * M * M +
-                                    Cr[1] * K * M))
+                                    (vr[1] + with_spread*w[1]*Ycr[i]) * fdr * K * M))
 round_range2, _= fold((R[1] + Ycr1)*fr)
 round_velocity2, fold2 = fold((vr[1] + w[1]*Xcr1)*fd)
 
@@ -208,7 +214,7 @@ data = awgn(data, SNR)
 
 #%% 1DFFT
 
-data1f = fftshift(fft(data*(exp(0j * pi * (Cr[0] * K * M))) , axis=-1, n=4*k), axes=-1)
+data1f = fftshift(fft(data*(exp(2j * pi * (Cr[0] * K * M))) , axis=-1, n=4*k), axes=-1)
 plt.figure(figsize=[8, 5])
 plt.imshow(np.flipud(20 * log10(abs(data1f))).T, aspect='auto', cmap='jet', extent=[0, m, 1.5*range_domain, 2.5*range_domain])
 plt.clim(vmin=22, vmax=62)
@@ -235,8 +241,8 @@ x2, y2 = scene(Xc, Yc, theta[1], R[1])
 plt.scatter(y1, x1, s=2, label='car 1')
 plt.scatter(y2, x2, s=2, label='car 2')
 plt.scatter([0], [0], s=300, marker="v", label='radar')
-plt.xlim((-10, 10))
-plt.ylim((0, 20))
+plt.xlim((-20, 20))
+plt.ylim((0, 40))
 plt.xlabel('X (m)')
 plt.ylabel('Y (m)')
 plt.grid(axis='x', ls=":")
@@ -246,7 +252,10 @@ if save_fig:
 
 # %% 2DFFT
 I = 0
-dataf = fftshift((fft2((data)*exp(0j*pi*(Cr[I] * K * M + ar[I] * fa * K * M * M + ar[I] * frs * M * M)), [m, k])), -1)
+# vr[I] = 36
+comdata = data*exp(2j*pi*(vr[I]*fdr*K*M +ar[I]*fa*K*M*M + ar[I]*frs*M*M + vr[I]*fd*M))
+# comdata = Keystone(comdata, fd, fdr)
+dataf = fftshift((fft2(comdata, [4*m, 4*k])))
 plt.figure(figsize=[8, 5])
 data_fft2_db = 20*log10(abs(dataf))
 plt.imshow(np.flipud(data_fft2_db).T,
@@ -263,16 +272,14 @@ if save_fig:
     plt.savefig("2DFFT_{}.png".format(number_target), dpi=300)
 
 # %% Using ME or VSVD to separate targets and estimate the couplings
-
-
-cspan = vspan * fdr
-
-
-def Fourier(cspan, data, X, Y, algorithm, alpha=1):
+cspan = vspan
+def Fourier(cspan, data, K, M, algorithm, alpha=1):
     ec = np.zeros((cle,), dtype=np.float32)
     tic = time.time()
-    for i, com in (enumerate(cspan)):
-        datac = data * exp(2j*pi*com*X*Y)
+    for i, v in (enumerate(cspan)):
+        datac = data * exp(2j * pi * (v * fdr * K * M + v * fd * M))
+        if keystone_usd:
+            datac = Keystone(datac, fd, fdr, verbose=False)
         isar = abs(fft2(datac, [1 * k, 1 * m]))
         ec[i] = algorithm(isar, alpha)
     print("Time for FFT: {:.3f} seconds".format(time.time()-tic))
@@ -283,27 +290,14 @@ def Fourier(cspan, data, X, Y, algorithm, alpha=1):
     return ec, cvalue
 
 
-
-def varsvd(cspan, data, X, Y, alpha=1):
+def eigen(cspan, data, K, M, algorithm, alpha=1):
     es = np.zeros((cle,), dtype=np.float32)
     tic = time.time()
-    for i, com in (enumerate(cspan)):
-        datac = data * exp(2j*pi*com*X*Y)
-        es[i] = entropy(np.linalg.svd(datac, compute_uv=False))
-    print("Time for SVD: {:.3f} seconds".format(time.time()-tic))
-
-    indc = np.argwhere(np.min(es) == es).flatten()[0]
-    cvalue = cspan[indc]
-
-    return es, cvalue
-
-
-def eigen(cspan, data, X, Y, algorithm, alpha=1):
-    es = np.zeros((cle,), dtype=np.float32)
-    tic = time.time()
-    for i, com in (enumerate(cspan)):
-        datac = data * exp(2j*pi*com*X*Y)
-        eigvals = (np.linalg.eigvalsh(datac.T.conj().dot(datac)))
+    for i, v in (enumerate(cspan)):
+        datac = data * exp(2j * pi * (v * fdr * K * M + v * fd * M))
+        if keystone_usd:
+            datac = Keystone(datac, fd, fdr, verbose=False)
+        eigvals = (np.linalg.eigvalsh(datac.dot(datac.T.conj())))
         es[i] = algorithm(eigvals, alpha)
     print("Time for EIG: {:.3f} seconds".format(time.time()-tic))
 
@@ -313,23 +307,19 @@ def eigen(cspan, data, X, Y, algorithm, alpha=1):
     return es, cvalue
 
 
-
-# fascan = ascan * fa
-
-
-def angle_acceleration_search(data, method, ascan, cspan, X, Y, algorithm, alpha=1):
+def angle_acceleration_search(data, method, ascan, cspan, K, M, algorithm, alpha=1):
     me = np.zeros((ele, cle))
-    for i, ep in tqdm(enumerate(ascan)): # for acceleration
+    for i, a in tqdm(enumerate(ascan)): # for acceleration
         if method.__name__ is 'eigen':
-            # ep = 0
-            datac = data * exp(2j*pi*(ep*fa*X*Y*Y + ep*frs*Y*Y))
+            # a = 0
+            datac = data * exp(2j * pi * (a * fa * K * M * M + a * frs * M * M))
         elif method.__name__ is 'Fourier':
-            ep = ep
-            datac = data * exp(2j*pi*(ep*fa*X*Y*Y + ep*frs*Y*Y))
+            a = a
+            datac = data * exp(2j * pi * (a * fa * K * M * M + a * frs * M * M))
         else:
             print("Please Confirm your Method!")
             raise ValueError
-        me[i, :] = method(cspan, datac, X, Y, algorithm, alpha)[0]
+        me[i, :] = method(cspan, datac, K, M, algorithm, alpha)[0]
 
     return me
 
@@ -356,18 +346,15 @@ algorithm2 = algorithm1
 # algorithm3 = image_constrast
 alpha = 1
 
-
-
 # me0 = angle_acceleration_search(data, method0, ascan, cspan, X, Y, algorithm=algorithm0, alpha=alpha)
 me1 = angle_acceleration_search(data, method1, ascan, cspan, K, M, algorithm=algorithm1, alpha=alpha)
 me2 = angle_acceleration_search(data, method2, ascan, cspan, K, M, algorithm=algorithm2, alpha=alpha)
 # me3 = angle_acceleration_search(data, method3, ascan, cspan, X, Y, algorithm=algorithm3, alpha=alpha)
-
-# %% plt
 if algorithm1 == renyi:
-    CMAP = 'jet_r'
-else:
-    CMAP = 'jet'
+    me1  = - me1
+    me2 = - me2
+# %% plt
+CMAP = 'hot_r'
 
 if me0 is not None:
     plt.figure(figsize=[8, 5])
@@ -480,10 +467,7 @@ if (me3 is not None) and (me1 is not None):
 
 
 if (me2 is not None) and (me1 is not None):
-    if algorithm2 == renyi:
-        me_com = -(1 - normalize(me2)) * (1 - normalize(me1))
-    else:
-        me_com = normalize(me1) * normalize(me2)
+    me_com = normalize(me1) * normalize(me2)
     plt.figure(figsize=[8, 5])
     plt.imshow(np.flipud(me_com),
                aspect='auto', cmap=CMAP, extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
@@ -560,14 +544,13 @@ def max_pos(map):
     return np.unravel_index(map.argmax(), map.shape)
 
 
-
 # %% fold Doppler
 r0 = (R[0] + Xcr)
 v0 = (vr[0] + w[0]*Ycr)
 r1 = (R[1] + Xcr1)
 v1 = (vr[1] + w[1]*Ycr1)
 range_fold = R[0] // range_domain
-doppler_fold = vr[0] // (2*max_unambiguous_velocity) *2
+doppler_fold = vr[0] // (2*max_unambiguous_velocity) * 2
 
 fig = plt.figure(figsize=[7, 5])
 plt.scatter(v0 % (2*max_unambiguous_velocity)-max_unambiguous_velocity, r0,  marker='x', c='k', label="True Pos1")
@@ -587,8 +570,11 @@ plt.scatter(v1, r1, marker='x', c='g',  label="Car 2")
 plt.legend(loc="upper left")
 plt.xlabel("Doppler velocity ($m/s$)")
 plt.ylabel("Range (m)")
-plt.ylim(1.5*range_domain, 2.5*range_domain)
-plt.xlim(doppler_fold*max_unambiguous_velocity, (doppler_fold+2)*max_unambiguous_velocity)
+plt.ylim(2.5*range_domain, 3.5*range_domain)
+plt.xlim((doppler_fold-3)*max_unambiguous_velocity, (doppler_fold+2)*max_unambiguous_velocity)
+plt.vlines(x = (doppler_fold-2)*max_unambiguous_velocity, ymin=0, ymax=100, linestyles=':')
+plt.vlines(x = (doppler_fold)*max_unambiguous_velocity, ymin=0, ymax=100, linestyles=':')
+plt.vlines(x = (doppler_fold+2)*max_unambiguous_velocity, ymin=0, ymax=100, linestyles=':')
 if save_fig:
     plt.savefig("unfolded_velocity_{}.png".format(number_target), dpi=300)
 
