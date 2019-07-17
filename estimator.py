@@ -205,13 +205,13 @@ if save_fig:
 # %% de-transform
 # est_a = deg2rad(0.5 * theta[0] + 0.5 * theta[1])
 
+MARKER = "X"
+MARKER_SIZE = 15
+MARKER_COLOR = 'gray'
+
 car = car2
 i = 0
 vre = v_est[1]
-
-car = car1
-i = 1
-vre = v_est[0]
 
 theta_ = np.mean(theta[0:2]) * np.ones((2,))
 theta_ = theta
@@ -229,9 +229,29 @@ cof1_x = (indX - image_x/2) *resolution/zoom
 nX, nY = rotate_target(cof1_x, cof1_y, -theta_[i])
 
 plt.figure()
-plt.scatter(nY, nX)
+plt.scatter(nY, nX, s=MARKER_SIZE, marker=MARKER, c=MARKER_COLOR)
+plt.xlim(-2, 2)
+plt.ylim(-2, 4)
 
 
+car = car1
+i = 1
+vre = v_est[0]
 
+indY, indX = np.nonzero(car)
+image_y, image_x = car.shape
+y = np.linspace(-0.5, 0.5, image_y, endpoint=False)[indY]
 
+cof1_y = c*R[i]/fc/T/2/vre/tan(deg2rad(theta_[i])) * y
+cof1_x = (indX - image_x/2) *resolution/zoom
+
+# plt.figure()
+# plt.scatter(cof1_y, cof1_x)
+
+nX, nY = rotate_target(cof1_x, cof1_y, -theta_[i])
+
+plt.figure()
+plt.scatter(nY, nX, s=MARKER_SIZE, marker=MARKER, c=MARKER_COLOR)
+plt.xlim(-2, 2)
+plt.ylim(-1, 5)
 
