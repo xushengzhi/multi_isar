@@ -56,8 +56,37 @@ if save_fig:
     plt.savefig('car_model.png', dpi=300)
 
 
+def complex_amplitude(low_alpha):
+    COF = np.sqrt(2)/2
+    real = COF * (low_alpha + (1-low_alpha) * np.random.rand())
+    imag = COF * (low_alpha + (1-low_alpha) * np.random.rand())
+    return (real+ 1j * imag)
 
-np.savez('car.npz', Xc, Yc)
+def varying_amplitude(X, low_alpha=0.5):
+    k = X.size
+    alpha = np.zeros_like(X, dtype=complex)
+    for i in range(k):
+        alpha[i] = complex_amplitude(low_alpha) * np.random.randn() * 10
+
+    return alpha
+
+
+alpha = varying_amplitude(Xc, 0.5)
+
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+plt.imshow(binImg, cmap='hot_r')
+plt.scatter(Xc[::2], Yc[::2], s=10*abs(alpha), edgecolors='r')
+ax.patch.set_visible(False)            # remove the frame
+for spi in plt.gca().spines.values():  # remove the frame
+    spi.set_visible(False)
+plt.tight_layout()
+plt.axis('off')
+
+
+
+
+# np.savez('car.npz', Xc, Yc)
 
 
 # Xc = []

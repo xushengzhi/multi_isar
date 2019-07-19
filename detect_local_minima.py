@@ -53,7 +53,11 @@ def detect_local_minima(arr):
 
 
 if __name__ == '__main__':
+    # import matplotlib
+    # matplotlib.rcParams['backend'] = 'Qt4Agg'
+    # matplotlib.rcParams['backend.qt4'] = 'PyQt4'
     import matplotlib.pyplot as plt
+
     denoising_method = denoise_tv_chambolle
     X, Y = np.meshgrid(np.arange(100)*0.2, np.arange(100)*0.2)
     Z = np.sin(X) * np.cos(Y) + np.random.randn(100, 100)*0.1
