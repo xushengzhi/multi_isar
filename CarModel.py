@@ -24,7 +24,7 @@ plt.figure()
 plt.imshow(binImg, cmap='hot_r')
 
 dot = np.zeros_like(binImg)
-dot[::12, ::12] = 1
+dot[::12, ::15] = 1
 dotImg = dot * binImg
 
 plt.figure()
@@ -73,39 +73,22 @@ def varying_amplitude(X, low_alpha=0.5):
 
 alpha = varying_amplitude(Xc, 0.5)
 
-fig = plt.figure()
+
+# %%
+fig = plt.figure(figsize=[12, 6])
 ax = fig.add_subplot(1, 1, 1)
 plt.imshow(binImg, cmap='hot_r')
-plt.scatter(Xc[::2], Yc[::2], s=10*abs(alpha), edgecolors='r')
+plt.scatter(Xc[::], Yc[::], s=15*abs(alpha), edgecolors='r')
 ax.patch.set_visible(False)            # remove the frame
 for spi in plt.gca().spines.values():  # remove the frame
     spi.set_visible(False)
 plt.tight_layout()
 plt.axis('off')
+# if save_fig:
+#     plt.savefig("car_model.png", dpi=300)
 
 
-
-
-# np.savez('car.npz', Xc, Yc)
-
-
-# Xc = []
-# Yc = []
-# x1 = [5,     4.5,     4,     3.5,     3,     2.5,      2,      1.5,      1,      0.5,     0]
-# y1 = [11,   11.6,  12.2,    12.7,    13,    13.3,     13.4,    13.43,   13.48,   13.5,     13.5]
-#
-# x2 = [5, 5.3, 5.2, 5.1, 5.4]
-# y2 = [11, 10.1, 9.2, 8.3, 7.4]
-#
-#
-# Xc.append(x1)
-# Yc.append(y1)
-# plt.figure()
-#
-#
-# plt.scatter(Xc, Yc)
-# plt.ylim([-15, 15])
-# plt.xlim([-15, 15])
+# np.savez('car.npz', Xc, Yc, alpha)
 
 
 

@@ -113,7 +113,7 @@ random = np.random.rand(4)  # add random velocity to the targets
 v = -(np.array([90, 80, 14, 14]) + 80) / 3.6 + random * 0 # velocity ()
 a = np.array([-4, 4, 10, 10])*0 + np.random.rand(4) * 0
 
-v = -(np.array([95, 80, 14, 14]) + 40 + 20 * np.random.randn()) / 3.6 + random * 0
+v = -(np.array([95, 80, 14, 14]) + 60 + 5 * np.random.randn()) / 3.6 + random * 0
 
 theta = [20, 30, 30, 30]    # angle (should be similar)
 w = [0, 0, 0, 0]           # rotational velocity
@@ -173,8 +173,10 @@ def varying_amplitude(X, low_alpha=0.5):
 
     return alpha
 
-alpha1 = varying_amplitude(Xc, low_alpha)
-alpha2 = varying_amplitude(Xc, low_alpha)
+# alpha1 = varying_amplitude(Xc, low_alpha)
+# alpha2 = varying_amplitude(Xc, low_alpha)
+alpha1 = car['arr_2']
+alpha2 = alpha1
 
 
 for i in range(number_scatters):
@@ -263,17 +265,18 @@ def scene(Xc, Yc, theta, R):
     return Xtb, Ytb
 
 
-plt.figure(figsize=[8, 8])
+plt.figure(figsize=[5, 5])
 x1, y1 = scene(Xc, Yc, theta[0], R[0])
 x2, y2 = scene(Xc, Yc, theta[1], R[1])
-plt.scatter(y1, x1, s=abs(alpha1)/4, label='car 1', c='k')
-plt.scatter(y2, x2, s=abs(alpha2)/4, label='car 2', c='g')
-plt.scatter([0], [0], s=300, marker="v", label='radar')
+plt.scatter(y1, x1, s=abs(alpha1)/4, label='car1', c='b')
+plt.scatter(y2, x2, s=abs(alpha2)/4, label='car2', c='g')
+plt.scatter([0], [0], s=300, marker="v")
 plt.xlim((-15, 15))
 plt.ylim((0, 30))
 plt.xlabel('X ($m$)')
 plt.ylabel('Y ($m$)')
 plt.grid(axis='x', ls=":")
+plt.legend()
 if save_fig:
     plt.savefig("scenario.png", dpi=300)
 # plt.legend()
@@ -387,7 +390,7 @@ if algorithm1 == renyi:
 if algorithm2 == renyi:
     me2 = - me2
 # %% plt
-CMAP = 'jet'
+CMAP = 'hot_r'
 
 if me0 is not None:
     plt.figure(figsize=[8, 5])
@@ -396,7 +399,8 @@ if me0 is not None:
     #             extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
     plt.xlabel("Velocity ($m/s$)")
     plt.ylabel("Acceleration ($m/s^2$)")
-    plt.colorbar()
+    cbar = plt.colorbar()
+    cbar.set_label('Normalized Entropy', fontsize=15, rotation=-90, labelpad=18)
     # plt.scatter(vr[0:number_target],
     #     #             ar[0:number_target],
     #     #             marker='o',
@@ -420,7 +424,8 @@ if me1 is not None:
     #             extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
     plt.xlabel("Velocity ($m/s$)")
     plt.ylabel("Acceleration ($m/s^2$)")
-    plt.colorbar()
+    cbar = plt.colorbar()
+    cbar.set_label('Normalized Entropy', fontsize=15, rotation=-90, labelpad=18)
     # plt.scatter(vr[0:number_target],
     #             ar[0:number_target],
     #             marker='o',
@@ -429,13 +434,13 @@ if me1 is not None:
     #             label="Target1",
     #             edgecolors='w',
     #             linewidths=3)
-    plt.vlines(x=vr[0]+w[0]*np.min(Xcr), ymin=ascan[0], ymax=ascan[-1], colors='g')
-    plt.vlines(x=vr[0]+w[0]*np.max(Xcr), ymin=ascan[0], ymax=ascan[-1], colors='g')
-    plt.vlines(x=vr[1]+w[1]*np.min(Xcr1), ymin=ascan[0], ymax=ascan[-1], colors='w')
-    plt.vlines(x=vr[1]+w[1]*np.max(Xcr1), ymin=ascan[0], ymax=ascan[-1], colors='w')
+    plt.vlines(x=vr[0] + w[0] * np.min(Xcr),  ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
+    plt.vlines(x=vr[0] + w[0] * np.max(Xcr),  ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
+    plt.vlines(x=vr[1] + w[1] * np.min(Xcr1),  ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+    plt.vlines(x=vr[1] + w[1] * np.max(Xcr1),  ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
     if save_fig:
         plt.savefig(method1.__name__ + algorithm1.__name__ + '{}_{}.png'.format(SNR, number_target), dpi=300)
-    plt.title('Eig with Entropy')
+    # plt.title('Eig with Entropy')
 
 if me2 is not None:
     plt.figure(figsize=[8, 5])
@@ -444,7 +449,8 @@ if me2 is not None:
     # plt.contour(-np.flipud(normalize(me2)), aspect='auto', cmap='jet', extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
     plt.xlabel("Velocity ($m/s$)")
     plt.ylabel("Acceleration ($m/s^2$)")
-    plt.colorbar()
+    cbar = plt.colorbar()
+    cbar.set_label('Normalized Entropy', fontsize=15, rotation=-90, labelpad=18)
     # plt.scatter(vr[0:number_target],
     #             ar[0:number_target],
     #             marker='o',
@@ -453,13 +459,13 @@ if me2 is not None:
     #             label="Target1",
     #             edgecolors='w',
     #             linewidths=3)
-    plt.vlines(x=vr[0]+w[0]*np.min(Xcr), ymin=ascan[0], ymax=ascan[-1], colors='g')
-    plt.vlines(x=vr[0]+w[0]*np.max(Xcr), ymin=ascan[0], ymax=ascan[-1], colors='g')
-    plt.vlines(x=vr[1]+w[1]*np.min(Xcr1), ymin=ascan[0], ymax=ascan[-1], colors='w')
-    plt.vlines(x=vr[1]+w[1]*np.max(Xcr1), ymin=ascan[0], ymax=ascan[-1], colors='w')
+    plt.vlines(x=vr[0] + w[0] * np.min(Xcr),  ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
+    plt.vlines(x=vr[0] + w[0] * np.max(Xcr),  ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
+    plt.vlines(x=vr[1] + w[1] * np.min(Xcr1),  ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+    plt.vlines(x=vr[1] + w[1] * np.max(Xcr1),  ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
     if save_fig:
         plt.savefig(method2.__name__ + algorithm2.__name__ + '{}_{}.png'.format(SNR, number_target), dpi=300)
-    plt.title('Fourier with Entropy')
+    # plt.title('Fourier with Entropy')
 
 if me3 is not None:
     plt.figure(figsize=[8, 5])
@@ -597,31 +603,39 @@ v1 = (vr[1] + w[1]*Ycr1)
 range_fold = R[0] // range_domain
 doppler_fold = vr[0] // (2*max_unambiguous_velocity) * 2
 
-fig = plt.figure(figsize=[7, 5])
-plt.scatter(v0 % (2*max_unambiguous_velocity)-max_unambiguous_velocity, r0,  marker='x', c='k', label="True Pos1")
-plt.scatter(v1 % (2*max_unambiguous_velocity)-max_unambiguous_velocity, r1, marker='x', c='g',  label="True Pos2")
-plt.legend(loc="upper left")
+fig = plt.figure(figsize=[8, 5])
+plt.scatter(v0 % (2*max_unambiguous_velocity)-max_unambiguous_velocity, r0,  marker='x', c='b', label="car1")
+plt.scatter(v1 % (2*max_unambiguous_velocity)-max_unambiguous_velocity, r1, marker='x', c='g',  label="car2")
+plt.legend(loc="best")
 plt.xlabel("Folded Doppler velocity ($m/s$)")
 plt.ylabel("Range (m)")
-plt.ylim((1.5)*range_domain, (2.5)*range_domain)
+plt.ylim((2.5)*range_domain, (3.5)*range_domain)
 plt.xlim(-max_unambiguous_velocity, 1*max_unambiguous_velocity)
 if save_fig:
     plt.savefig("folded_velocity_{}.png".format(number_target), dpi=300)
 
 # %% unfold
-plt.figure(figsize=[7, 5])
-plt.scatter(v0, r0, marker='x', c='k', label="Car 1")
+plt.figure(figsize=[8, 5])
+plt.scatter(v0, r0, marker='x', c='b', label="Car 1")
 plt.scatter(v1, r1, marker='x', c='g',  label="Car 2")
-plt.legend(loc="upper left")
+
 plt.xlabel("Doppler velocity ($m/s$)")
 plt.ylabel("Range (m)")
 plt.ylim(2.5*range_domain, 3.5*range_domain)
-plt.xlim((doppler_fold-5)*max_unambiguous_velocity, (doppler_fold+8)*max_unambiguous_velocity)
-plt.vlines(x = (doppler_fold-2)*max_unambiguous_velocity, ymin=0, ymax=100, linestyles=':')
-plt.vlines(x = (doppler_fold)*max_unambiguous_velocity, ymin=0, ymax=100, linestyles=':')
-plt.vlines(x = (doppler_fold+2)*max_unambiguous_velocity, ymin=0, ymax=100, linestyles=':')
-plt.vlines(x = (doppler_fold+4)*max_unambiguous_velocity, ymin=0, ymax=100, linestyles=':')
-plt.vlines(x = (doppler_fold+6)*max_unambiguous_velocity, ymin=0, ymax=100, linestyles=':')
+plt.xlim((doppler_fold)*max_unambiguous_velocity, (doppler_fold+6)*max_unambiguous_velocity)
+plt.vlines(x = (doppler_fold-1)*max_unambiguous_velocity, ymin=0, ymax=100, color='r', linestyles=':', label='$V_m$')
+plt.vlines(x = (doppler_fold)*max_unambiguous_velocity, ymin=0, ymax=100, color='r', linestyles=':')
+plt.vlines(x = (doppler_fold+2)*max_unambiguous_velocity, ymin=0, ymax=100, color='r', linestyles=':')
+plt.vlines(x = (doppler_fold+4)*max_unambiguous_velocity, ymin=0, ymax=100, color='r', linestyles=':')
+plt.vlines(x = (doppler_fold+6)*max_unambiguous_velocity, ymin=0, ymax=100, color='r', linestyles=':')
+
+plt.vlines(x=vr[0] + w[0] * np.min(Xcr), ymin=0, ymax=100, colors='b', lw=2.5, linestyle='-.')
+plt.vlines(x=vr[0] + w[0] * np.max(Xcr), ymin=0, ymax=100, colors='b', lw=2.5, linestyle='-.')
+plt.vlines(x=vr[1] + w[1] * np.min(Xcr1), ymin=0, ymax=100, colors='g', lw=2.5, linestyle='-.')
+plt.vlines(x=vr[1] + w[1] * np.max(Xcr1), ymin=0, ymax=100, colors='g', lw=2.5, linestyle='-.')
+
+plt.legend(loc="upper right")
+
 if save_fig:
     plt.savefig("unfolded_velocity_{}.png".format(number_target), dpi=300)
 
@@ -638,27 +652,27 @@ fig, ax = plt.subplots(nrows=2, ncols=3, figsize=(8, 5), sharex=True, sharey=Tru
 weight = 0.5
 np.set_printoptions(precision=2)
 
-me2 = normalize(me2)
-me1 = normalize(me1)
-me_com = normalize(me_com)
+me2n = np.flipud(normalize(me2))
+me1n = np.flipud(normalize(me1))
+me_comn = np.flipud(normalize(me_com))
 
 
-ax[0, 0].imshow(me1, aspect='auto', cmap=CMAP)
+ax[0, 0].imshow(me1n, aspect='auto', cmap=CMAP)
 ax[0, 0].axis('off')
 # ax[0, 0].set_title("Me1")
 if denosing:
-    me1 = denoise_tv_chambolle(me1, weight=weight)
+    me1n = denoise_tv_chambolle(me1n, weight=weight)
 
-ax[1, 0].imshow(me1, aspect='auto', cmap=CMAP)
+ax[1, 0].imshow(me1n, aspect='auto', cmap=CMAP)
 ax[1, 0].axis('off')
 # ax[1, 0].set_title("Me1 denoising")
 
-arr1 = detect_local_minima(-(me1))
+arr1 = detect_local_minima(-(me1n))
 indy, indx = arr1
 to_delete_list = []
 number_target_est = indx.size
 for i in range(number_target_est):
-    if me1[indy[i], indx[i]] <= 0.4:
+    if me1n[indy[i], indx[i]] <= 0.4:
         to_delete_list.append(i)
 indx1 = np.delete(indx, to_delete_list)
 indy1 = np.delete(indy, to_delete_list)
@@ -666,23 +680,23 @@ print('vr estimation: {}       ar estimation: {} '.format(vspan[indx1], ascan[in
 ax[1, 0].scatter(indx1, indy1, s=20, c=scatter_c, marker=MARKER)
 
 
-ax[0, 1].imshow(me2, aspect='auto', cmap=CMAP)
+ax[0, 1].imshow(me2n, aspect='auto', cmap=CMAP)
 ax[0, 1].axis('off')
 # ax[0, 1].set_title("Me2")
 if denosing:
-    me2 = denoise_tv_chambolle(me2, weight=weight)
+    me2n = denoise_tv_chambolle(me2n, weight=weight)
 
-ax[1, 1].imshow((me2), aspect='auto', cmap=CMAP)
+ax[1, 1].imshow((me2n), aspect='auto', cmap=CMAP)
 ax[1, 1].axis('off')
 # ax[1, 1].set_title("Me2 denoising")
 
-arr2 = detect_local_minima(-(me2))
+arr2 = detect_local_minima(-(me2n))
 indy, indx = arr2
 to_delete_list = []
 number_target_est = indx.size
 
 for i in range(number_target_est):
-    if me2[indy[i], indx[i]] <= 0.4:
+    if me2n[indy[i], indx[i]] <= 0.4:
         to_delete_list.append(i)
 indx2 = np.delete(indx, to_delete_list)
 indy2 = np.delete(indy, to_delete_list)
@@ -691,21 +705,21 @@ ax[1, 1].scatter(indx2, indy2, s=20, c=scatter_c, marker=MARKER)
 
 
 
-ax[0, 2].imshow(me_com, aspect='auto', cmap=CMAP)
+ax[0, 2].imshow(me_comn, aspect='auto', cmap=CMAP)
 ax[0, 2].axis('off')
 # ax[0, 2].set_title("MeCOM")
 
-ax[1, 2].imshow(denoise_tv_chambolle(me_com), aspect='auto', cmap=CMAP)
+ax[1, 2].imshow(denoise_tv_chambolle(me_comn), aspect='auto', cmap=CMAP)
 ax[1, 2].axis('off')
 # ax[1, 2].set_title("MeCOM denoising")
 
-arr3 = detect_local_minima(-denoise_tv_chambolle(me_com, weight=weight))
+arr3 = detect_local_minima(-denoise_tv_chambolle(me_comn, weight=weight))
 indy, indx = arr3
 to_delete_list = []
 number_target_est = indx.size
 
 for i in range(number_target_est):
-    if me_com[indy[i], indx[i]] <= 0.4:
+    if me_comn[indy[i], indx[i]] <= 0.4:
         to_delete_list.append(i)
 indx3 = np.delete(indx, to_delete_list)
 indy3 = np.delete(indy, to_delete_list)
@@ -716,6 +730,59 @@ plt.tight_layout()
 
 if save_fig:
     plt.savefig("denoising_estimation.png", dpi=400)
+
+# %% plot for paper
+CMAP = 'hot_r'
+
+
+plt.figure(figsize=[8, 5])
+plt.imshow(denoise_tv_chambolle(me1n), aspect='auto', cmap=CMAP,
+           extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
+cbar = plt.colorbar()
+cbar.set_label('Normalized Entropy', fontsize=15, rotation=-90, labelpad=18)
+plt.vlines(x=vr[0] + w[0] * np.min(Xcr), ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
+plt.vlines(x=vr[0] + w[0] * np.max(Xcr), ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
+plt.vlines(x=vr[1] + w[1] * np.min(Xcr1), ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+plt.vlines(x=vr[1] + w[1] * np.max(Xcr1), ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+plt.scatter(vspan[indx1], ascan[indy1], s=60, c=scatter_c, marker=MARKER)
+plt.xlim(vspan[0], vspan[-1])
+plt.ylim(ascan[0], ascan[-1])
+plt.xlabel("Velocity ($m/s$)")
+plt.ylabel("Acceleration ($m/s^2$)")
+if save_fig:
+    plt.savefig("eigen_denoising_estimation.png", dpi=300)
+
+
+plt.figure(figsize=[8, 5])
+plt.imshow(denoise_tv_chambolle(me2n), aspect='auto', cmap=CMAP,
+           extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
+cbar = plt.colorbar()
+cbar.set_label('Normalized Entropy', fontsize=15, rotation=-90, labelpad=18)
+plt.vlines(x=vr[0] + w[0] * np.min(Xcr), ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
+plt.vlines(x=vr[0] + w[0] * np.max(Xcr), ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
+plt.vlines(x=vr[1] + w[1] * np.min(Xcr1), ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+plt.vlines(x=vr[1] + w[1] * np.max(Xcr1), ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+plt.scatter(vspan[indx2], ascan[indy2], s=60, c=scatter_c, marker=MARKER)
+plt.xlabel("Velocity ($m/s$)")
+plt.ylabel("Acceleration ($m/s^2$)")
+if save_fig:
+    plt.savefig("fourier_denoising_estimation.png", dpi=300)
+
+
+plt.figure(figsize=[8, 5])
+plt.imshow(denoise_tv_chambolle(me_comn), aspect='auto', cmap=CMAP,
+           extent=[vspan[0], vspan[-1], ascan[0], ascan[-1]])
+cbar = plt.colorbar()
+cbar.set_label('Normalized Entropy', fontsize=15, rotation=-90, labelpad=18)
+plt.vlines(x=vr[0] + w[0] * np.min(Xcr), ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
+plt.vlines(x=vr[0] + w[0] * np.max(Xcr), ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
+plt.vlines(x=vr[1] + w[1] * np.min(Xcr1), ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+plt.vlines(x=vr[1] + w[1] * np.max(Xcr1), ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+plt.scatter(vspan[indx3], ascan[indy3], s=60, c=scatter_c, marker=MARKER)
+plt.xlabel("Velocity ($m/s$)")
+plt.ylabel("Acceleration ($m/s^2$)")
+if save_fig:
+    plt.savefig("combination_denoising_estimation.png", dpi=300)
 
 
 #%% estimation of parameters
@@ -750,13 +817,13 @@ cbar = plt.colorbar()
 cbar.set_label('dB', fontsize=15, rotation=-90, labelpad=18)
 plt.ylabel('Range ($m$)')
 plt.xlabel('Doppler ($m/s$)')
-if save_fig:
-    plt.savefig("first_focusing.png".format(number_target), dpi=300)
+# if save_fig:
+#     plt.savefig("first_focusing.png".format(number_target), dpi=300)
 
 from skimage import morphology
 dilation = morphology.binary_dilation
 max_spec = np.max(data_fft2_db)
-threshold = 10#db
+threshold = 12#db
 car1 = (data_fft2_db > (max_spec-threshold))
 fig.add_subplot(1, 2, 2)
 car_dilation = dilation(dilation(dilation(car1)))
@@ -794,8 +861,8 @@ cbar = plt.colorbar()
 cbar.set_label('dB', fontsize=15, rotation=-90, labelpad=18)
 plt.ylabel('Range ($m$)')
 plt.xlabel('Doppler ($m/s$)')
-if save_fig:
-    plt.savefig("second_focusing.png".format(number_target), dpi=300)
+# if save_fig:
+#     plt.savefig("second_focusing.png".format(number_target), dpi=300)
 
 
 max_spec = np.max(data_fft2_db)
@@ -819,55 +886,55 @@ if save_fig:
 # %% de-transform
 # est_a = deg2rad(0.5 * theta[0] + 0.5 * theta[1])
 
-MARKER = "X"
-MARKER_SIZE = 15
-MARKER_COLOR = 'gray'
-
-car = car2
-i = 0
-vre = v_est[1]
-
-theta_ = np.mean(theta[0:2]) * np.ones((2,))
-theta_ = theta_
-
-indY, indX = np.nonzero(car)
-image_y, image_x = car.shape
-y = np.linspace(-0.5, 0.5, image_y, endpoint=False)[indY]
-
-cof1_y = c*R[i]/fc/T/2/vre/np.tan(deg2rad(theta_[i])) * y
-cof1_x = (indX - image_x/2) *resolution/zoom
-
+# MARKER = "X"
+# MARKER_SIZE = 15
+# MARKER_COLOR = 'gray'
+#
+# car = car2
+# i = 0
+# vre = v_est[1]
+#
+# theta_ = np.mean(theta[0:2]) * np.ones((2,))
+# theta_ = theta_
+#
+# indY, indX = np.nonzero(car)
+# image_y, image_x = car.shape
+# y = np.linspace(-0.5, 0.5, image_y, endpoint=False)[indY]
+#
+# cof1_y = c*R[i]/fc/T/2/vre/np.tan(deg2rad(theta_[i])) * y
+# cof1_x = (indX - image_x/2) *resolution/zoom
+#
+# # plt.figure()
+# # plt.scatter(cof1_y, cof1_x)
+#
+# nX, nY = rotate_target(cof1_x, cof1_y, -theta_[i])
+#
 # plt.figure()
-# plt.scatter(cof1_y, cof1_x)
-
-nX, nY = rotate_target(cof1_x, cof1_y, -theta_[i])
-
-plt.figure()
-plt.scatter(nY, nX, s=MARKER_SIZE, marker=MARKER, c=MARKER_COLOR)
-plt.xlim(-2, 2)
-plt.ylim(-2, 4)
-
-
-car = car1
-i = 1
-vre = v_est[0]
-
-indY, indX = np.nonzero(car)
-image_y, image_x = car.shape
-y = np.linspace(-0.5, 0.5, image_y, endpoint=False)[indY]
-
-cof1_y = c*R[i]/fc/T/2/vre/np.tan(deg2rad(theta_[i])) * y
-cof1_x = (indX - image_x/2) *resolution/zoom
-
+# plt.scatter(nY, nX, s=MARKER_SIZE, marker=MARKER, c=MARKER_COLOR)
+# plt.xlim(-2, 2)
+# plt.ylim(-2, 4)
+#
+#
+# car = car1
+# i = 1
+# vre = v_est[0]
+#
+# indY, indX = np.nonzero(car)
+# image_y, image_x = car.shape
+# y = np.linspace(-0.5, 0.5, image_y, endpoint=False)[indY]
+#
+# cof1_y = c*R[i]/fc/T/2/vre/np.tan(deg2rad(theta_[i])) * y
+# cof1_x = (indX - image_x/2) *resolution/zoom
+#
+# # plt.figure()
+# # plt.scatter(cof1_y, cof1_x)
+#
+# nX, nY = rotate_target(cof1_x, cof1_y, -theta_[i])
+#
 # plt.figure()
-# plt.scatter(cof1_y, cof1_x)
-
-nX, nY = rotate_target(cof1_x, cof1_y, -theta_[i])
-
-plt.figure()
-plt.scatter(nY, nX, s=MARKER_SIZE, marker=MARKER, c=MARKER_COLOR)
-plt.xlim(-2, 2)
-plt.ylim(-1, 5)
+# plt.scatter(nY, nX, s=MARKER_SIZE, marker=MARKER, c=MARKER_COLOR)
+# plt.xlim(-2, 2)
+# plt.ylim(-1, 5)
 
 
 
