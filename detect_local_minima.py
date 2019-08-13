@@ -28,6 +28,7 @@ def detect_local_minima(arr):
     # define an connected neighborhood
     # http://www.scipy.org/doc/api_docs/SciPy.ndimage.morphology.html#generate_binary_structure
     neighborhood = morphology.generate_binary_structure(len(arr.shape), 2)
+    # neighborhood = np.ones((4, 4), dtype=bool)
     # apply the local minimum filter; all locations of minimum value
     # in their neighborhood are set to 1
     # http://www.scipy.org/doc/api_docs/SciPy.ndimage.filters.html#minimum_filter

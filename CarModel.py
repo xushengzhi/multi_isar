@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 
 
 
-path = "multi_isar/"
+path = "data/"
 file = "car.jpg"
-img = plt.imread(file)
+img = plt.imread(path + file)
 img2 = np.sum(img[750::, ...], -1)
 binImg = img2 < 650
 
