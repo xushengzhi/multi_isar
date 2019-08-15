@@ -9,13 +9,13 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-from pylab import pi, exp, fft, fft2, log10, fftshift, sin, cos, deg2rad, ifft, ifftshift
+from pylab import pi, exp, fft, fft2, log10, fftshift, sin, cos, deg2rad
 from scipy.constants import speed_of_light as c
 from tqdm import tqdm
 
 from multi_isar.Keystone import Keystone
 from multi_isar.utils import cart2pol, pol2cart, awgn, normalize, entropy, renyi, tsallis, image_constrast, db
-from multi_isar.detect_local_minima import detect_local_minima
+# from multi_isar.detect_local_minima import detect_local_minima
 from skimage.restoration import denoise_tv_chambolle, denoise_tv_chambolle
 from skimage.morphology import extrema
 
@@ -24,9 +24,9 @@ from skimage.morphology import extrema
 params = {'legend.fontsize': 'x-large',
           'figure.figsize': (8, 5),
           'axes.labelsize': 'x-large',
-          'axes.titlesize':'x-large',
-          'xtick.labelsize':'x-large',
-          'ytick.labelsize':'x-large',
+          'axes.titlesize': 'x-large',
+          'xtick.labelsize': 'x-large',
+          'ytick.labelsize': 'x-large',
           'figure.max_open_warning': 0}
 
 plt.rcParams.update(params)
@@ -82,8 +82,9 @@ number_scatters = Xc.size
 # %% Radar parameters
 B = 4e9     # bandwidth
 resolution = c/2/B
-fc = 78e9   # carrier frequency
+fc = 77e9 + B/2   # carrier frequency
 T = 4.0e-4
+PRF = 1/T
 Td = 0.8*T
 
 vm = c/4/T/fc
@@ -112,6 +113,13 @@ a = np.array([-4, 4, 10, 10])*0 + np.random.rand(4) * 0
 v = np.array([-40.32, -40.06, -21.82, -21.82]) + random * 0.05
 # v = np.array([-41.2, -39.97, -21.37, -21.33]) + random * 0.1 # for the paper
 
+v_kilo = v*3.6
+v_self = 70
+v_car = v_kilo + v_self
+
+print('The velocity of car1 and car2 are: {:.2f}km/h and {:.2f}km/h'.format(v_car[0], v_car[1]))
+print('The velocity of radar is: {:.2f}km/h'.format(v_self))
+
 theta = [20, 30, 30, 30]                                      # angle (should be similar)
 w = np.array([0, 0, 0, 0]) + 0.001 * np.random.randn(4)       # rotational velocity
 vr = v*cos(deg2rad(theta))                                    # radial velocity
@@ -122,8 +130,8 @@ w = w + vt/R                                                  # rotational veloc
 
 
 #%% special settings
-ele = 21      # 41 for paper                              # number of the searching grids for acceleration
-cle = 81      # 121 for paper                             # number of the searching grids for velocity
+ele = 41      # 41 for paper                              # number of the searching grids for acceleration
+cle = 121      # 121 for paper                             # number of the searching grids for velocity
 
 keystone_usd = 0
 algorithm11 = renyi                   # eigen
@@ -208,14 +216,20 @@ if alpha_all_one:
     alpha1 = np.ones(500, )
     alpha2 = alpha1
 
-fig = plt.figure(figsize=[12, 6])
+fig = plt.figure(figsize=[8, 5])
+binImg = np.load('multi_isar/data/binImg.npy')
 ax = fig.add_subplot(1, 1, 1)
-plt.scatter(Xc[::], Yc[::], s=15*abs(alpha2), edgecolors='r')
+plt.imshow(binImg, cmap='gray_r')
+plt.xlim(100, 1180)
+plt.ylim([40, 470])
+plt.scatter(car['arr_0'][::dxy], car['arr_1'][::dxy], s=100*abs(alpha2), edgecolors='r', marker='8')
 ax.patch.set_visible(False)                                     # remove the frame
 for spi in plt.gca().spines.values():                           # remove the frame
     spi.set_visible(False)
 plt.tight_layout()
 plt.axis('off')
+if save_fig:
+    plt.savefig('car_scattering_model.png', dpi=300)
 
 # %%
 for i in range(number_scatters):
@@ -247,6 +261,7 @@ else:
     data = data1
 
 data_nonoise = data
+sig_power = db(np.trace(data_nonoise @ data_nonoise.T.conj()))
 data = awgn(data, SNR)
 # data \in C^{ m*k }
 
@@ -277,15 +292,17 @@ def scene(Xc, Yc, theta, R):
     return Xtb, Ytb
 
 if alpha_all_one:
-    alpha_zoom = 15
+    alpha_zoom = 5
 else:
     alpha_zoom = 2
 
 plt.figure(figsize=[5, 5])
 x1, y1 = scene(Xc, Yc, theta[0], R[0])
 x2, y2 = scene(Xc, Yc, theta[1], R[1])
-plt.scatter(y1, x1, s=abs(alpha1)*alpha_zoom, label='car1', c='b')
-plt.scatter(y2, x2, s=abs(alpha2)*alpha_zoom, label='car2', c='g')
+plt.scatter(y1, x1, s=abs(alpha1)*alpha_zoom, label='car1', c='b', marker='x')
+plt.scatter(y2, x2, s=abs(alpha2)*alpha_zoom, label='car2', c='g', marker='x')
+plt.plot([0, -7.6], [0, 19.6], c='b', lw=2, ls=':', label='LOS')                # plot line of sight
+plt.plot([0, -10], [0, 16.2], c='g', lw=2, ls=':', label='LOS')
 plt.scatter([0], [0], s=300, marker="v")
 plt.xlim((-15, 15))
 plt.ylim((0, 30))
@@ -293,6 +310,8 @@ plt.xlabel("X' ($m$)")
 plt.ylabel("Y' ($m$)")
 plt.grid(axis='x', ls=":")
 plt.legend()
+
+
 if save_fig:
     plt.savefig("scenario.png", dpi=300)
 # plt.legend()
@@ -373,7 +392,7 @@ def angle_acceleration_search(data, method, ascan, cspan, K, M, algorithm, alpha
 
     return me
 
-#%%
+# %% main
 
 
 me0, me1, me2, me3 = None, None, None, None
@@ -476,9 +495,10 @@ v1 = (vr[1] + w[1]*Ycr1)
 range_fold = R[0] // range_domain
 doppler_fold = vr[0] // (2*vm) * 2
 
-fig = plt.figure(figsize=[8, 5])
-plt.scatter(v0 % (2*vm)-vm, r0,  marker='x', c='b', label="car1", s=2*alpha_zoom*abs(alpha1))
-plt.scatter(v1 % (2*vm)-vm, r1, marker='x', c='g',  label="car2", s=2*alpha_zoom*abs(alpha1))
+fig = plt.figure(figsize=[6.5, 5])
+# size = fig.get_size_inches()*fig.dpi          # Get current figure size
+plt.scatter(v0 % (2*vm)-vm, r0,  marker='x', c='b', label="car1", s=4*alpha_zoom*abs(alpha1))
+plt.scatter(v1 % (2*vm)-vm, r1, marker='x', c='g',  label="car2", s=4*alpha_zoom*abs(alpha1))
 plt.legend(loc="best")
 plt.xlabel("Folded Doppler velocity ($m/s$)")
 plt.ylabel("Range (m)")
@@ -489,9 +509,9 @@ if save_fig:
     plt.savefig("folded_velocity_{}.png".format(number_target), dpi=300)
 
 # %% unfold
-plt.figure(figsize=[8, 5])
-plt.scatter(v0, r0, marker='x', c='b', label="Car 1", s=2*alpha_zoom*abs(alpha1))
-plt.scatter(v1, r1, marker='x', c='g',  label="Car 2", s=2*alpha_zoom*abs(alpha2))
+plt.figure(figsize=[6.5, 5])
+plt.scatter(v0, r0, marker='x', c='b', label="Car 1", s=4*alpha_zoom*abs(alpha1))
+plt.scatter(v1, r1, marker='x', c='g',  label="Car 2", s=4*alpha_zoom*abs(alpha2))
 
 plt.xlabel("Doppler velocity ($m/s$)")
 plt.ylabel("Range (m)")
@@ -726,7 +746,7 @@ car1 = (data_fft2_db > (max_spec-threshold))
 car1_dilation = triple_dilation(car1)
 car1_color_offset[:, :, 0] = 1 - np.fliplr(car1_dilation.T)
 car1_color_offset[:, :, 1] = 1 - np.fliplr(car1_dilation.T)
-plt.figure(figsize=[8, 5])
+plt.figure(figsize=[6.5, 5])
 plt.imshow(car1_color_offset,
            aspect='auto',
            extent=[-vm + v_est[0],
@@ -779,7 +799,7 @@ if v_est.size >= 2:
     car2_color_offset[:, :, 0] = 1 - np.fliplr(car2_dilation.T)
     car2_color_offset[:, :, 1] = 1 - 0.5 * np.fliplr(car2_dilation.T)
     car2_color_offset[:, :, 2] = 1 - np.fliplr(car2_dilation.T)
-    plt.figure(figsize=[8, 5])
+    plt.figure(figsize=[6.5, 5])
     plt.imshow(car2_color_offset,
                aspect='auto',
                extent=[-vm + v_est[1],
@@ -797,7 +817,7 @@ if v_est.size >= 2:
 
 
 #%%
-plt.figure(figsize=[8, 5])
+plt.figure(figsize=[6.5, 5])
 if v_est.size >= 2:
     plt.imshow(np.fliplr(car2_dilation.T),
                aspect='auto',
@@ -837,7 +857,7 @@ if save_fig:
     plt.savefig("map_recover.png", dpi=300)
 
 #%% velocity comparison
-plt.figure(figsize=[8,5])
+plt.figure(figsize=[8, 5])
 plt.plot(vspan, normalize(me1[ele//2, :]), lw=4, label='Normalized EES', c='r', ls=":")
 plt.plot(vspan, normalize(me2[ele//2, :]), lw=4, label='Normalized EFS', c='c', ls=":")
 plt.plot(vspan, normalize(me_com[ele//2, :]), lw=4, label='Normalized Combination', c='m', ls=":")

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 
 
-path = "data/"
+path = "multi_isar/data/"
 file = "car.jpg"
 img = plt.imread(path + file)
 img2 = np.sum(img[750::, ...], -1)
@@ -22,6 +22,9 @@ binImg = img2 < 650
 
 plt.figure()
 plt.imshow(binImg, cmap='hot_r')
+np.save(path+"binImg.np", binImg)
+
+
 
 dot = np.zeros_like(binImg)
 dot[::12, ::15] = 1
@@ -31,6 +34,8 @@ plt.figure()
 plt.imshow(dotImg)
 
 
+
+# %%
 x, y = binImg.shape
 noise = np.random.rand(x*y).reshape(x, y) > 0
 noiseImg = binImg & noise
