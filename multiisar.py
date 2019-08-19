@@ -110,7 +110,7 @@ v = -(np.array([90, 80, 14, 14]) + 80) / 3.6 + random * 0     # velocity ()
 a = np.array([-4, 4, 10, 10])*0 + np.random.rand(4) * 0
 
 # v = -(np.array([95, 80, 14, 14]) + 60 + 20 * np.random.randn()) / 3.6 + random * 1
-v = np.array([-40.32, -40.06, -21.82, -21.82]) + random * 0.05
+v = np.array([-40.32, -40.06, -21.82, -21.82]) + random * 0.000005
 # v = np.array([-41.2, -39.97, -21.37, -21.33]) + random * 0.1 # for the paper
 
 v_kilo = v*3.6
@@ -130,17 +130,17 @@ w = w + vt/R                                                  # rotational veloc
 
 
 #%% special settings
-ele = 41      # 41 for paper                              # number of the searching grids for acceleration
-cle = 121      # 121 for paper                             # number of the searching grids for velocity
+ele = 21      # 41 for paper                              # number of the searching grids for acceleration
+cle = 81      # 121 for paper                             # number of the searching grids for velocity
 
 keystone_usd = 0
 algorithm11 = renyi                   # eigen
-algorithm22 = renyi                   # fourier
+algorithm22 = image_constrast                   # fourier
 with_spread = 1                       # True for isar, False for cluster targets
-SNR = 10                             #
+SNR = 10                           #
 alpha_all_one = 1                     # True to set alhpa to 1
 low_alpha = 0.5                       # variation of the amplitude (real)     # X:fast time
-number_target = 2                     #
+number_target = 2                    #
 threshold = 5                         # db, threshold to split focused target
 denosing = 1                          # True for de-noising, False for not
 weight = 0.2                         # De-noising weight
@@ -196,25 +196,26 @@ def swerlingI(sigma):
 
 # %%
 alpha1 = varying_amplitude(Xc, low_alpha)
-# alpha2 = varying_amplitude(Xc, low_alpha)
-alpha2 = alpha1
+alpha2 = varying_amplitude(Xc, low_alpha)
+# alpha2 = alpha1
 # plt.figure()
 # plt.plot(np.sort(np.abs(alpha1)))
 # plt.plot(np.sort(np.abs(alpha2)))
 
-### alpha2 = alpha1
-### np.savez('alpha.npz', alpha1, alpha2)
+# alpha2 = alpha1
+# np.savez('alpha.npz', alpha1, alpha2)
 #
-# alpha = np.load('alpha.npz')
-# alpha1 = alpha['arr_0']
-# alpha2 = alpha['arr_1']
+alpha = np.load('alpha.npz')
+alpha1 = alpha['arr_0']
+alpha2 = alpha['arr_1']
 #
 # # plt.plot(np.sort(np.abs(alpha1)), ls=":")
 # # plt.plot(np.sort(np.abs(alpha2)), ls=":")
 
 if alpha_all_one:
-    alpha1 = np.ones(500, )
+    alpha1 = np.ones(500, ) * ( np.random.rand(500, )*0.2 + 0.8 )
     alpha2 = alpha1
+
 
 fig = plt.figure(figsize=[8, 5])
 binImg = np.load('multi_isar/data/binImg.npy')
@@ -340,14 +341,14 @@ if save_fig:
 
 # %% Using ME or VSVD to separate targets and estimate the couplings
 cspan = vspan
-def Fourier(cspan, data, K, M, algorithm, alpha=1):
+def Fourier(cspan, data, K, M, algorithm, alpha=1, zoom=1):
     ec = np.zeros((cle,), dtype=np.float32)
     tic = time.time()
     for i, v in (enumerate(cspan)):
         datac = data * exp(2j * pi * (v * fdr * K * M + v * fd * M))
         if keystone_usd:
             datac = Keystone(datac, fd, fdr, verbose=False)
-        isar = abs(fft2(datac, [1 * k, 1 * m]))
+        isar = abs(fft2(datac, [zoom * k, zoom * m]))
         ec[i] = algorithm(isar**2, alpha)
         # ec[i] = -np.var(isar**2)
     print("Time for FFT: {:.3f} seconds".format(time.time()-tic))
@@ -640,8 +641,9 @@ cbar = plt.colorbar()
 cbar.set_label('Normalized Entropy', fontsize=15, rotation=-90, labelpad=18)
 plt.vlines(x=vr[0] + w[0] * np.min(Xcr)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
 plt.vlines(x=vr[0] + w[0] * np.max(Xcr)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
-plt.vlines(x=vr[1] + w[1] * np.min(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
-plt.vlines(x=vr[1] + w[1] * np.max(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+if number_target == 2:
+    plt.vlines(x=vr[1] + w[1] * np.min(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+    plt.vlines(x=vr[1] + w[1] * np.max(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
 plt.scatter(vspan[indx1], -ascan[indy1], s=60, c=scatter_c, marker=MARKER)
 plt.xlim(vspan[0], vspan[-1])
 plt.ylim(ascan[0], ascan[-1])
@@ -658,8 +660,9 @@ cbar = plt.colorbar()
 cbar.set_label('Normalized Entropy', fontsize=15, rotation=-90, labelpad=18)
 plt.vlines(x=vr[0] + w[0] * np.min(Xcr)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
 plt.vlines(x=vr[0] + w[0] * np.max(Xcr)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
-plt.vlines(x=vr[1] + w[1] * np.min(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
-plt.vlines(x=vr[1] + w[1] * np.max(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+if number_target == 2:
+    plt.vlines(x=vr[1] + w[1] * np.min(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+    plt.vlines(x=vr[1] + w[1] * np.max(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
 plt.scatter(vspan[indx2], -ascan[indy2], s=60, c=scatter_c, marker=MARKER)
 plt.xlabel("Velocity ($m/s$)")
 plt.ylabel("Acceleration ($m/s^2$)")
@@ -674,8 +677,9 @@ cbar = plt.colorbar()
 cbar.set_label('Normalized Entropy', fontsize=15, rotation=-90, labelpad=18)
 plt.vlines(x=vr[0] + w[0] * np.min(Xcr)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
 plt.vlines(x=vr[0] + w[0] * np.max(Xcr)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
-plt.vlines(x=vr[1] + w[1] * np.min(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
-plt.vlines(x=vr[1] + w[1] * np.max(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+if number_target == 2:
+    plt.vlines(x=vr[1] + w[1] * np.min(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+    plt.vlines(x=vr[1] + w[1] * np.max(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
 plt.scatter(vspan[indx3], -ascan[indy3], s=60, c=scatter_c, marker=MARKER)
 plt.xlabel("Velocity ($m/s$)")
 plt.ylabel("Acceleration ($m/s^2$)")
@@ -691,8 +695,9 @@ cbar = plt.colorbar()
 cbar.set_label('Normalized Entropy', fontsize=15, rotation=-90, labelpad=18)
 plt.vlines(x=vr[0] + w[0] * np.min(Xcr)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
 plt.vlines(x=vr[0] + w[0] * np.max(Xcr)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='b', lw=3, linestyle='-.')
-plt.vlines(x=vr[1] + w[1] * np.min(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
-plt.vlines(x=vr[1] + w[1] * np.max(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+if number_target == 2:
+    plt.vlines(x=vr[1] + w[1] * np.min(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
+    plt.vlines(x=vr[1] + w[1] * np.max(Xcr1)*0.8, ymin=ascan[0], ymax=ascan[-1], colors='g', lw=3, linestyle='-.')
 plt.scatter(vspan[indx4], -ascan[indy4], s=60, c=scatter_c, marker=MARKER)
 plt.xlabel("Velocity ($m/s$)")
 plt.ylabel("Acceleration ($m/s^2$)")

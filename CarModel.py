@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 
 
-path = "multi_isar/data/"
+path = "data/"
 file = "car.jpg"
 img = plt.imread(path + file)
 img2 = np.sum(img[750::, ...], -1)
