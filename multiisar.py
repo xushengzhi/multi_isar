@@ -9,7 +9,7 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-from pylab import pi, exp, fft, fft2, log10, fftshift, sin, cos, deg2rad
+from pylab import pi, exp, fft, fft2, log10, fftshift, sin, cos, deg2rad, rad2deg
 from scipy.constants import speed_of_light as c
 from tqdm import tqdm
 
@@ -55,7 +55,8 @@ save_fig = False    # always keep it false
 # %% setting basic parameters
 k = 200  # fast time
 m = 156  # slow time
-[K, M] = np.meshgrid(np.arange(k), np.arange(m))  # slow time * fast time (X is fasttime, Y is slowtime)
+l = 8    # elements
+[K, M, L] = np.meshgrid(np.arange(k), np.arange(m), np.arange(l))  # slow time * fast time (X is fasttime, Y is slowtime)
 # 156*200     X(0->200), Y(0->156)
 
 # %%
@@ -87,7 +88,6 @@ T = 4.0e-4
 PRF = 1/T
 Td = 0.8*T
 
-vm = c/4/T/fc
 
 Ts = Td/k
 fs = 1/Ts
@@ -151,7 +151,7 @@ vspan = np.linspace(np.min(vr[0:number_target])-2, np.max(vr[0:number_target])+2
 ascan = np.linspace(-4, 4, ele)
 
 # %% Generating data
-data1 = np.zeros((m, k), dtype=complex)
+data1 = np.zeros((m, k, l), dtype=complex)
 data2 = np.zeros_like(data1, dtype=complex)
 data3 = np.zeros_like(data1, dtype=complex)
 data4 = np.zeros_like(data1, dtype=complex)
@@ -232,57 +232,6 @@ plt.axis('off')
 if save_fig:
     plt.savefig('car_scattering_model.png', dpi=300)
 
-# %%
-for i in range(number_scatters):
-    data1 = data1 + alpha1[i] * \
-                    exp(-2j * pi * (fr * (R[0]+Xcr[i]) * K +                    # range
-                                    fd * (vr[0] + w[0]*Ycr[i]) * M +            # Doppler
-                                    ar[0] * fa * K * M * M +
-                                    ar[0] * frs * M * M +
-                                    (vr[0] + with_spread*w[0]*Ycr[i]) * fdr * K * M))
-round_range1, _ = fold((R[0] + Ycr)*fr)
-round_velocity1, fold1 = fold((vr[0] + w[0]*Xcr)*fd)
-
-
-Xcr1, Ycr1 = rotate_target(Xc, Yc, theta[1])
-for i in range(number_scatters):
-    data2 = data2 + alpha2[i] * \
-                    exp(-2j * pi * (fr * (R[1]+Xcr1[i]) * K +
-                                    fd * (vr[1] + w[1]*Ycr1[i]) * M +
-                                    ar[1] * fa * K * M * M +
-                                    ar[1] * frs * M * M +
-                                    (vr[1] + with_spread*w[1]*Ycr[i]) * fdr * K * M))
-round_range2, _= fold((R[1] + Ycr1)*fr)
-round_velocity2, fold2 = fold((vr[1] + w[1]*Xcr1)*fd)
-
-
-if number_target == 2:
-    data = data1 + data2
-else:
-    data = data1
-
-data_nonoise = data
-sig_power = db(np.trace(data_nonoise @ data_nonoise.T.conj()))
-data = awgn(data, SNR)
-# data \in C^{ m*k }
-
-# %% 1DFFT
-
-data1f = fftshift(fft(data*(exp(0*2j * pi * (Cr[0] * K * M))) , axis=-1, n=4*k), axes=-1)
-plt.figure(figsize=[8, 5])
-data1f_db = 20 * log10(abs(data1f))
-plt.imshow((data1f_db).T,
-           aspect='auto',
-           cmap='jet',
-           extent=[0, m, 2.5*range_domain, 3.5*range_domain])
-plt.clim(vmin=np.max(data1f_db) - 40, vmax=np.max(data1f_db))
-cbar = plt.colorbar()
-cbar.set_label('dB', fontsize=15, rotation=-90, labelpad=18)
-plt.ylabel('Range ($m$)')
-plt.xlabel('Slow Time Bins')
-if save_fig:
-    plt.savefig("1DFFT_{}.png".format(number_target), dpi=300)
-
 # %% image the scene
 
 def scene(Xc, Yc, theta, R):
@@ -300,6 +249,10 @@ else:
 plt.figure(figsize=[5, 5])
 x1, y1 = scene(Xc, Yc, theta[0], R[0])
 x2, y2 = scene(Xc, Yc, theta[1], R[1])
+
+angle1 = np.arctan(y1/x1)
+angle2 = np.arctan(y2/x1)
+
 plt.scatter(y1, x1, s=abs(alpha1)*alpha_zoom, label='car1', c='b', marker='x')
 plt.scatter(y2, x2, s=abs(alpha2)*alpha_zoom, label='car2', c='g', marker='x')
 plt.plot([0, -7.6], [0, 19.6], c='b', lw=2, ls=':', label='LOS')                # plot line of sight
@@ -312,10 +265,77 @@ plt.ylabel("Y' ($m$)")
 plt.grid(axis='x', ls=":")
 plt.legend()
 
-
 if save_fig:
     plt.savefig("scenario.png", dpi=300)
 # plt.legend()
+
+# %% establish the data
+'''
+Add angle information
+'''
+wavelength = c / fc
+d = wavelength / 2
+
+# L = np.arange(l)
+# steering_vector1 = exp(2j*pi*L*d/wavelength*sin(angle1))
+# steering_vector2 = exp(2j*pi*L*d/wavelength*sin(angle2))
+
+# %%
+
+for i in range(number_scatters):
+    data1 = data1 + alpha1[i] * \
+                    exp(-2j * pi * (fr * (R[0]+Xcr[i]) * K +                    # range
+                                    fd * (vr[0] + w[0]*Ycr[i]) * M +            # Doppler
+                                    ar[0] * fa * K * M * M +
+                                    ar[0] * frs * M * M +
+                                    (vr[0] + with_spread * w[0] * Ycr[i]) * fdr * K * M
+                                    + L*d/wavelength*sin(angle1[i])))
+round_range1, _ = fold((R[0] + Ycr)*fr)
+round_velocity1, fold1 = fold((vr[0] + w[0]*Xcr)*fd)
+
+
+Xcr1, Ycr1 = rotate_target(Xc, Yc, theta[1])
+for i in range(number_scatters):
+    data2 = data2 + alpha2[i] * \
+                    exp(-2j * pi * (fr * (R[1]+Xcr1[i]) * K +
+                                    fd * (vr[1] + w[1]*Ycr1[i]) * M +
+                                    ar[1] * fa * K * M * M +
+                                    ar[1] * frs * M * M +
+                                    (vr[1] + with_spread*w[1]*Ycr[i]) * fdr * K * M
+                                    + L*d/wavelength*sin(angle2[i])))
+round_range2, _= fold((R[1] + Ycr1)*fr)
+round_velocity2, fold2 = fold((vr[1] + w[1]*Xcr1)*fd)
+
+
+if number_target == 2:
+    data = data1 + data2
+else:
+    data = data1
+
+data_nonoise = data
+sig_power = db(np.sum(abs(data_nonoise)**2))
+data_noise = awgn(data, SNR)
+# data \in C^{ m*k }
+
+data = data_noise[..., 0]
+# %% 1DFFT
+[K, M] = np.meshgrid(np.arange(k), np.arange(m))
+data1f = fftshift(fft(data*(exp(0*2j * pi * (Cr[0] * K * M))), axis=-1, n=4*k), axes=-1)
+plt.figure(figsize=[8, 5])
+data1f_db = 20 * log10(abs(data1f))
+plt.imshow((data1f_db).T,
+           aspect='auto',
+           cmap='jet',
+           extent=[0, m, 2.5*range_domain, 3.5*range_domain])
+plt.clim(vmin=np.max(data1f_db) - 40, vmax=np.max(data1f_db))
+cbar = plt.colorbar()
+cbar.set_label('dB', fontsize=15, rotation=-90, labelpad=18)
+plt.ylabel('Range ($m$)')
+plt.xlabel('Slow Time Bins')
+if save_fig:
+    plt.savefig("1DFFT_{}.png".format(number_target), dpi=300)
+
+
 
 # %% 2DFFT
 I = 1
@@ -780,17 +800,17 @@ if v_est.size >= 2:
     dataf = fftshift(fft2(dataf, [zoom*m, zoom*k]))
 
     plt.figure(figsize=[8, 5])
-    data_fft2_db = 20*log10(abs(dataf))
-    plt.imshow((np.flipud(data_fft2_db).T),
+    data_fft2_db2 = 20*log10(abs(dataf))
+    plt.imshow((np.flipud(data_fft2_db2).T),
                aspect='auto',
                cmap='jet',
-               extent=[ -vm + v_est[1],
+               extent=[-vm + v_est[1],
                         vm + v_est[1],
                         2.5*range_domain,
                         3.5*range_domain],
                         interpolation='none')
-    max_data_fft2_db = np.max(data_fft2_db)
-    plt.clim(vmin=max_data_fft2_db-30, vmax=max_data_fft2_db)
+    max_data_fft2_db2 = np.max(data_fft2_db2)
+    plt.clim(vmin=max_data_fft2_db2-30, vmax=max_data_fft2_db2)
     cbar = plt.colorbar()
     cbar.set_label('(dB)', fontsize=15, rotation=-90, labelpad=18)
     plt.ylabel('Range ($m$)')
@@ -798,8 +818,8 @@ if v_est.size >= 2:
     if save_fig:
         plt.savefig("second_focusing.png".format(number_target), dpi=300)
 
-    max_spec = np.max(data_fft2_db)
-    car2 = (data_fft2_db > (max_spec-threshold))
+    max_spec = np.max(data_fft2_db2)
+    car2 = (data_fft2_db2 > (max_spec-threshold))
     car2_dilation = triple_dilation(car2)
     car2_color_offset[:, :, 0] = 1 - np.fliplr(car2_dilation.T)
     car2_color_offset[:, :, 1] = 1 - 0.5 * np.fliplr(car2_dilation.T)
@@ -886,5 +906,170 @@ plt.gca().invert_yaxis()
 if save_fig:
     plt.savefig("velocity_comparison.png", dpi=300)
 
+# %% GO BACK TO ESTIMATE THE ANGLE OF EACH CAR
+v_window = np.linspace(vm, -vm, data_fft2_db.shape[0], endpoint=False)
+r_window = np.linspace(0, range_domain, data_fft2_db.shape[1], endpoint=False)
 
+
+car1_th = data_fft2_db * (data_fft2_db > (data_fft2_db - threshold))
+car_arr1 = extrema.h_minima(-car1_th, h=15)
+indv1, indr1  = np.nonzero(car_arr1)
+# plt.figure()
+# plt.scatter(indv1, indr1)
+
+v1_estimate = v_est[0] + v_window[indv1]
+r1_estimate = r_window[data_fft2_db.shape[1] - indr1] - 0.5*range_domain
+# plt.figure()
+# plt.plot(v1_estimate)
+# plt.plot(vr[0] + w[0]*Ycr)
+
+car2_th = data_fft2_db2 * (data_fft2_db2 > (data_fft2_db2 - threshold))
+car_arr2 = extrema.h_minima(-car2_th, h=15)
+# plt.imshow(data_fft2_db)
+indv2, indr2 = np.nonzero(car_arr2)
+# plt.figure()
+# plt.scatter(indv2, indr2)
+
+v2_estimate = v_est[1] + v_window[indv2]
+r2_estimate = r_window[data_fft2_db.shape[1] - indr2] - 0.5*range_domain
+# plt.figure()
+# plt.plot(v2_estimate)
+# plt.plot(np.sort(vr[1] + w[1]*Ycr))
+
+plt.figure()
+plt.scatter(v1_estimate, r1_estimate)
+plt.scatter(v2_estimate, r2_estimate)
+
+# %% Beam-forming for the whole data
+bf_scan = np.linspace(-90, 90, 181)
+bf1 = np.zeros((bf_scan.size, ), dtype=complex)
+bf2 = np.zeros((bf_scan.size, ), dtype=complex)
+[K, M, L] = np.meshgrid(np.arange(k), np.arange(m), np.arange(l))
+data_car1 = np.zeros_like(K, dtype=complex)
+data_car2 = np.zeros_like(data_car1)
+
+#
+plt.figure()
+plt.plot(np.sort(R[0]+Xcr - 3*range_domain))
+plt.plot(np.sort(r1_estimate))
+plt.figure()
+plt.plot(np.sort(v1_estimate))
+plt.plot(np.sort(vr[0] + w[0]*Ycr))
+#
+# for i in range(number_scatters):
+#     data1 = data1 + alpha1[i] * \
+#                     exp(-2j * pi * (fr * (R[0]+Xcr[i]) * K +                    # range
+#                                     fd * (vr[0] + w[0]*Ycr[i]) * M +            # Doppler
+#                                     ar[0] * fa * K * M * M +
+#                                     ar[0] * frs * M * M +
+#                                     (vr[0] + with_spread * w[0] * Ycr[i]) * fdr * K * M
+#                                     + L*d/wavelength*sin(angle1[i])))
+
+
+for j in range(v1_estimate.size):
+    data_car1 = data_car1 + exp(2j * pi * (fr * r1_estimate[j] * K +
+                                            fd * v1_estimate[j] * M))
+
+
+for j in range(v2_estimate.size):
+    data_car2 = data_car2 + exp(2j * pi * (fr * r2_estimate[j] * K +
+                                            fd * v2_estimate[j] * M ))
+
+
+print("starting angle beamforming")
+for i, phi in tqdm(enumerate(np.linspace(-90, 90, 181))):
+    steering_vector = exp(2j * pi * L * d / wavelength * sin(deg2rad(phi)))
+    bf1[i] = db(abs(np.sum(steering_vector*data_car1*data_noise*exp(2j*pi*v_est[0]*fdr*K*M))))
+    bf2[i] = db(abs(np.sum(steering_vector*data_car2*data_noise*exp(2j*pi*v_est[1]*fdr*K*M))))
+    # bf2[i] = db(abs(np.sum(steering_vector * data2)))
+
+plt.figure()
+plt.plot(bf_scan, db(bf1), label='car1')
+plt.plot(bf_scan, db(bf2), label='car2')
+plt.grid(ls=':')
+plt.xlabel('Angle (degree)')
+plt.ylabel('Amplitude (dB')
+plt.legend()
+
+# %% TEST BEAMFORMING
+# # overlapping in beam pattern
+# plt.figure()
+# plt.plot(rad2deg(angle1))
+# plt.plot(rad2deg(angle2))
+# plt.grid(ls=':')
+# plt.xlabel('Scatters')
+# plt.ylabel('Angle (degree')
+#
+# # beamforming
+# Dat = data_nonoise[0, 0, :]
+# Dat = data2[0, 0, :]
+# bf_scan = np.linspace(-90, 90, 181)
+# bf = np.zeros((bf_scan.size, ), dtype=complex)
+# for i, phi in enumerate(np.linspace(-90, 90, 181)):
+#     steering_vector1 = exp(2j * pi * L * d / wavelength * sin(deg2rad(phi)))
+#     bf[i] = np.sum( steering_vector1 * Dat )
+#
+# plt.figure()
+# plt.plot(bf_scan, db(bf))
+# plt.grid(ls=':')
+# plt.xlabel('Angle (degree)')
+# plt.ylabel('Amplitude (dB')
+
+
+# %% de-transform
+est_a = deg2rad(0.5 * theta[0] + 0.5 * theta[1])
+
+MARKER = "X"
+MARKER_SIZE = 15
+MARKER_COLOR = 'gray'
+
+car = car2
+i = 0
+vre = v_est[1]
+
+theta_ = np.mean(theta[0:2]) * np.ones((2,))
+theta_ = theta_
+
+indY, indX = np.nonzero(car)
+image_y, image_x = car.shape
+y = np.linspace(-0.5, 0.5, image_y, endpoint=False)[indY]
+
+cof1_y = c*R[i]/fc/T/2/vre/np.tan(deg2rad(theta_[i])) * y
+cof1_x = (indX - image_x/2) *resolution/zoom
+
+# plt.figure()
+# plt.scatter(cof1_y, cof1_x)
+
+nX, nY = rotate_target(cof1_x, cof1_y, -theta_[i])
+
+plt.figure()
+plt.scatter(nY, nX, s=MARKER_SIZE, marker=MARKER, c=MARKER_COLOR)
+plt.xlim(-2, 2)
+plt.ylim(-2, 4)
+
+
+car = car1
+i = 1
+vre = v_est[0]
+
+indY, indX = np.nonzero(car)
+image_y, image_x = car.shape
+y = np.linspace(-0.5, 0.5, image_y, endpoint=False)[indY]
+
+cof1_y = c*R[i]/fc/T/2/vre/np.tan(deg2rad(theta_[i])) * y
+cof1_x = (indX - image_x/2) *resolution/zoom
+
+# plt.figure()
+# plt.scatter(cof1_y, cof1_x)
+
+nX, nY = rotate_target(cof1_x, cof1_y, -theta_[i])
+
+plt.figure()
+plt.scatter(nY, nX, s=MARKER_SIZE, marker=MARKER, c=MARKER_COLOR)
+plt.xlim(-2, 2)
+plt.ylim(-1, 5)
+
+
+
+# %%
 plt.show()
