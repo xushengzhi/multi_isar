@@ -14,8 +14,11 @@ import matplotlib.pyplot as plt
 from pylab import log10
 
 
-def normalize(data):
-    return (data - np.min(data))/(np.max(data) - np.min(data))
+def normalize(data, mode='01'):
+    if mode == '01':
+        return (data - np.min(data))/(np.max(data) - np.min(data))
+    elif mode == '80':
+        return (data - np.max(data))
 
 
 def awgn(sig, snrdb, sigpower=0):
