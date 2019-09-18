@@ -65,9 +65,10 @@ car = np.load('/Users/shengzhixu/Documents/Python/multi_isar/car.npz')
 dxy = 2
 Xc = car['arr_0'][::dxy]
 Yc = car['arr_1'][::dxy]
-Xc = (Xc - np.max(Xc)//2) / np.max(Xc) * 5   /  1
-Yc = (Yc - np.max(Yc)//2) / np.max(Yc) * 2.5 /  1
+Xc = (Xc - np.max(Xc)//2) / np.max(Xc) * 5   /  1 - 0.45
+Yc = (Yc - np.max(Yc)//2) / np.max(Yc) * 2.5 /  1 - 0.2
 
+plt.scatter(Yc, Xc)
 #%%
 def rotate_target(Xc, Yc, rotation=0):
     theta0 = deg2rad(rotation)
@@ -104,7 +105,7 @@ Acceleration rate can be ignored!!!!!!!!!????   No!!
 
 # %% Targets parameters
 range_domain = resolution * k
-R = [22.919, 20.69, 10, 10]
+R = [22.919, 21.60, 10, 10]
 random = np.random.rand(4)                                    # add random velocity to the targets
 v = -(np.array([90, 80, 14, 14]) + 80) / 3.6 + random * 0     # velocity ()
 a = np.array([-4, 4, 10, 10])*0 + np.random.rand(4) * 0
@@ -235,9 +236,9 @@ if save_fig:
 # %% image the scene
 
 def scene(Xc, Yc, theta, R):
-    Xt, Yt = rotate_target(Xc, Yc, theta)
-    new_Xt = Xt + R
-    Xtb, Ytb = rotate_target(new_Xt, Yt, -theta)
+    Xt, Yt = rotate_target(Xc, Yc, theta)   # Cart
+    new_Xt = Xt + R                         # Cart
+    Xtb, Ytb = rotate_target(new_Xt, Yt, -theta)    # Cart
 
     return Xtb, Ytb
 
@@ -251,7 +252,12 @@ x1, y1 = scene(Xc, Yc, theta[0], R[0])
 x2, y2 = scene(Xc, Yc, theta[1], R[1])
 
 angle1 = -np.arctan(y1/x1)
-angle2 = -np.arctan(y2/x1)
+angle2 = -np.arctan(y2/x2)
+
+print('Car1 Average Angle: {}'.format(np.mean(rad2deg(angle1))))
+print('Car2 Average Angle: {}'.format(np.mean(rad2deg(angle2))))
+
+f = lambda x, y: rad2deg(np.arctan(y/x))
 
 plt.scatter(y1, x1, s=abs(alpha1)*alpha_zoom, label='car1', c='b', marker='x')
 plt.scatter(y2, x2, s=abs(alpha2)*alpha_zoom, label='car2', c='g', marker='x')
@@ -870,7 +876,7 @@ if v_est.size >= 2:
     plt.vlines(x=vr[1] + w[1] * np.max(Xcr1)*0.8, ymin=0, ymax=100, colors='g', lw=2.5, linestyle='-.')
 
 plt.vlines(x = (doppler_fold-2)*vm, ymin=0, ymax=100, color='r', linestyles=':', label='$v_m$')
-plt.vlines(x = (doppler_fold)*vm, ymin=0, ymax=100, color='r', linestyles=':')
+plt.vlines(x = doppler_fold * vm, ymin=0, ymax=100, color='r', linestyles=':')
 plt.vlines(x = (doppler_fold+2)*vm, ymin=0, ymax=100, color='r', linestyles=':')
 plt.vlines(x = (doppler_fold+4)*vm, ymin=0, ymax=100, color='r', linestyles=':')
 plt.vlines(x = (doppler_fold+6)*vm, ymin=0, ymax=100, color='r', linestyles=':')
@@ -943,18 +949,10 @@ plt.grid(ls=':')
 data_car1 = np.zeros_like(K, dtype=complex)
 data_car2 = np.zeros_like(data_car1)
 
-# plt.figure()
-# plt.plot(np.sort(R[0]+Xcr - 3*range_domain))
-# plt.plot(np.sort(r1_estimate))
-# plt.figure()
-# plt.plot(np.sort(v1_estimate))
-# plt.plot(np.sort(vr[0] + w[0]*Ycr))
-
 
 for j in range(v1_estimate.size):
     data_car1 = data_car1 + exp(2j * pi * (fr * r1_estimate[j] * K +
                                             fd * v1_estimate[j] * M))
-
 
 for j in range(v2_estimate.size):
     data_car2 = data_car2 + exp(2j * pi * (fr * r2_estimate[j] * K +
@@ -964,15 +962,18 @@ angle_scan_length = 181
 bf_scan = np.linspace(-45, 45, angle_scan_length)
 bf1 = np.zeros((bf_scan.size, ), dtype=complex)
 bf2 = np.zeros((bf_scan.size, ), dtype=complex)
+bf3 = np.zeros((bf_scan.size, ), dtype=complex)
 print("starting angle beam-forming")
 for i, phi in tqdm(enumerate(bf_scan)):
     steering_vector = exp(2j * pi * L * d / wavelength * sin(deg2rad(phi)))
-    bf1[i] = db(abs(np.sum((steering_vector*data_car1*data_noise*exp(2j*pi*v_est[0]*fdr*K*M))[:, :, :])))
-    bf2[i] = db(abs(np.sum((steering_vector*data_car2*data_noise*exp(2j*pi*v_est[1]*fdr*K*M))[:, :, :])))
+    bf3[i] = db(abs(np.sum(steering_vector[:, :, :] * data_noise[:, :, :])))
+    bf1[i] = db(abs(np.sum((steering_vector*data_car1*data1*exp(2j*pi*v_est[0]*fdr*K*M))[:, :, :])))
+    bf2[i] = db(abs(np.sum((steering_vector*data_car2*data2*exp(2j*pi*v_est[1]*fdr*K*M))[:, :, :])))
 
 plt.figure()
 plt.plot(bf_scan, normalize(bf1, mode='80'), label='car1')
 plt.plot(bf_scan, normalize(bf2, mode='80'), label='car2')
+plt.plot(bf_scan, normalize(bf3, mode='80'), label='whole')
 plt.grid(ls=':')
 plt.xlabel('Angle (degree)')
 plt.ylabel('Amplitude (dB')
@@ -987,36 +988,40 @@ print(angle_est1, angle_est2)
 MARKER = "X"
 MARKER_SIZE = 15
 MARKER_COLOR = 'gray'
-angle_est2 = 30
 
 v1_ori = v_est[0] / cos(deg2rad(angle_est1))
 v2_ori = v_est[1] / cos(deg2rad(angle_est2))
 
-w1_ori = v1_ori * sin(deg2rad(angle_est1)) / np.min(r1_estimate + range_fold*range_domain)
-w2_ori = v2_ori * sin(deg2rad(angle_est2)) / np.min(r2_estimate + range_fold*range_domain)
+w1_ori = v1_ori * sin(deg2rad(angle_est1)) / np.mean(r1_estimate + range_fold*range_domain)
+w2_ori = v2_ori * sin(deg2rad(angle_est2)) / np.mean(r2_estimate + range_fold*range_domain)
 
 # %%
 from skimage.transform import rotate, resize
-resize_car2 = resize(car2_dilation, (800, int(624/-w2_ori)), clip=False)
-rotated_car2 = rotate(car2_dilation, -angle_est2)
+
+# resize -> rotation ->
+resize_car2 = resize(car2_dilation, (int(car2_dilation.shape[0]/-w2_ori), car2_dilation.shape[1]), clip=False)
+rotated_car2 = rotate(resize_car2, -angle_est2)
 plt.figure()
-plt.imshow(resize_car2)
+plt.imshow(car2_dilation)
 plt.figure()
 plt.imshow(rotated_car2)
+plt.title('Resize Car2')
 
-resize_car1 = resize(car1_dilation, (800, int(624/-w1_ori)), clip=False)
-rotated_car1 = rotate(car1_dilation, -angle_est1)
+resize_car1 = resize(car1_dilation, (int(car1_dilation.shape[0]/-w1_ori), car1_dilation.shape[1]), clip=False)
+rotated_car1 = rotate(resize_car1, -angle_est1)
 plt.figure()
-plt.imshow(resize_car1)
+plt.imshow(car1_dilation)
 plt.figure()
 plt.imshow(rotated_car1)
+plt.title('Resize Car1')
 
-lenX, lenY = rotated_car1.shape
+lenX1, lenY1 = rotated_car1.shape
+lenX2, lenY2 = resize_car2.shape
 # %%
 # image the scene
-X1, Y1 = (np.min(r1_estimate) + range_fold*range_domain) \
+X1, Y1 = (np.mean(r1_estimate)*0 + range_fold*range_domain) \
          * np.array([-sin(deg2rad(angle_est1)), cos(deg2rad(angle_est1))])
-X2, Y2 = (np.min(r2_estimate) + range_fold*range_domain) \
+X2, Y2 = (np.mean(r2_estimate)*0 + range_fold*range_domain ) \
          * np.array([-sin(deg2rad(angle_est2)), cos(deg2rad(angle_est2))])
 
 
@@ -1025,12 +1030,14 @@ X1_g = int(X1//range_resolution_zoom)
 Y1_g = int(Y1//range_resolution_zoom)
 X2_g = int(X2//range_resolution_zoom)
 Y2_g = int(Y2//range_resolution_zoom)
-grid_X =  int(30/range_resolution_zoom)
+grid_X = int(30/range_resolution_zoom)
 image_sc1 = np.zeros((grid_X, grid_X), dtype=bool)
 image_sc2 = np.zeros((grid_X, grid_X), dtype=bool)
 
-image_sc1[Y1_g:Y1_g + lenY, grid_X//2 + X1_g - lenX//2:grid_X//2 + X1_g + lenX//2] = np.flipud(rotated_car1.T)
-image_sc2[Y2_g:Y2_g + lenY, grid_X//2 + X2_g - lenX//2:grid_X//2 + X2_g + lenX//2] = np.flipud(rotated_car2.T)
+image_sc1[Y1_g-lenY1//2:Y1_g + lenY1//2, grid_X//2 + X1_g - lenX1//2:grid_X//2 + X1_g + lenX1//2 + int(lenX1%2==1)] \
+                            = np.flipud(rotated_car1.T)
+image_sc2[Y2_g-lenY2//2:Y2_g + lenY2//2, grid_X//2 + X2_g - lenX2//2:grid_X//2 + X2_g + lenX2//2 + int(lenX2%2==1)] \
+                            = np.flipud(rotated_car2.T)
 plt.figure()
 plt.imshow(np.flipud(image_sc1 + image_sc2),
            extent=[-15, 15, 0, 30])
