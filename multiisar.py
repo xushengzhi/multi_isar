@@ -84,7 +84,8 @@ number_scatters = Xc.size
 # %% Radar parameters
 B = 4e9     # bandwidth
 resolution = c/2/B
-fc = 77e9 + B/2   # carrier frequency
+f0 = 77e9
+fc = f0 + B/2   # carrier frequency
 T = 4.0e-4
 PRF = 1/T
 Td = 0.8*T
@@ -111,7 +112,7 @@ v = -(np.array([90, 80, 14, 14]) + 80) / 3.6 + random * 0     # velocity ()
 a = np.array([-4, 4, 10, 10])*0 + np.random.rand(4) * 0
 
 # v = -(np.array([95, 80, 14, 14]) + 60 + 20 * np.random.randn()) / 3.6 + random * 1
-v = np.array([-40.32, -40.06, -21.82, -21.82]) + random * 0.000005
+v = np.array([-40.32, -40.36, -21.82, -21.82]) + random * 0.000005
 # v = np.array([-41.2, -39.97, -21.37, -21.33]) + random * 0.1 # for the paper
 
 v_kilo = v*3.6
@@ -247,7 +248,7 @@ if alpha_all_one:
 else:
     alpha_zoom = 2
 
-plt.figure(figsize=[5, 5])
+
 x1, y1 = scene(Xc, Yc, theta[0], R[0])
 x2, y2 = scene(Xc, Yc, theta[1], R[1])
 
@@ -259,6 +260,7 @@ print('Car2 Average Angle: {}'.format(np.mean(rad2deg(angle2))))
 
 f = lambda x, y: rad2deg(np.arctan(y/x))
 
+plt.figure(figsize=[5, 5])
 plt.scatter(y1, x1, s=abs(alpha1)*alpha_zoom, label='car1', c='b', marker='x')
 plt.scatter(y2, x2, s=abs(alpha2)*alpha_zoom, label='car2', c='g', marker='x')
 plt.plot([0, -7.6], [0, 19.6], c='b', lw=2, ls=':', label='LOS')                # plot line of sight
@@ -282,6 +284,9 @@ Add angle information
 wavelength = c / fc
 d = wavelength / 2
 
+def angle_with_time(x, y, v, t):
+    return np.arctan((x + v*t)/y)
+
 # L = np.arange(l)
 # steering_vector1 = exp(2j*pi*L*d/wavelength*sin(angle1))
 # steering_vector2 = exp(2j*pi*L*d/wavelength*sin(angle2))
@@ -295,7 +300,7 @@ for i in range(number_scatters):
                                     ar[0] * fa * K * M * M +
                                     ar[0] * frs * M * M +
                                     (vr[0] + with_spread * w[0] * Ycr[i]) * fdr * K * M
-                                    + L*d/wavelength*sin(angle1[i])))
+                                    + L*d/c*(f0 + mu*K*Ts)*sin(angle_with_time(x1[i], y1[i], vr[0], K))))
 round_range1, _ = fold((R[0] + Ycr)*fr)
 round_velocity1, fold1 = fold((vr[0] + w[0]*Xcr)*fd)
 
@@ -308,7 +313,7 @@ for i in range(number_scatters):
                                     ar[1] * fa * K * M * M +
                                     ar[1] * frs * M * M +
                                     (vr[1] + with_spread*w[1]*Ycr[i]) * fdr * K * M
-                                    + L*d/wavelength*sin(angle2[i])))
+                                    + L*d/c*(f0 + mu*K*Ts)*sin(angle_with_time(x1[i], y1[i], vr[1], K))))
 round_range2, _= fold((R[1] + Ycr1)*fr)
 round_velocity2, fold2 = fold((vr[1] + w[1]*Xcr1)*fd)
 
@@ -978,6 +983,8 @@ plt.grid(ls=':')
 plt.xlabel('Angle (degree)')
 plt.ylabel('Amplitude (dB')
 plt.legend()
+if save_fig:
+    plt.savefig('SeparatedBeamForming.png', dpi=300)
 
 angle_est1 = bf_scan[np.argmax(bf1)]
 angle_est2 = bf_scan[np.argmax(bf2)]
@@ -1043,7 +1050,8 @@ plt.imshow(np.flipud(image_sc1 + image_sc2),
            extent=[-15, 15, 0, 30])
 plt.set_cmap('gray_r')
 plt.grid(axis='x', ls=':')
-
+if save_fig:
+    plt.savefig('Recovered_Geometry.png', dpi=300)
 
 
 # %%
